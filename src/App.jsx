@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { getData, setData } from './storage';
+import { auth } from './firebase';
 
 // ─── CONSTANTS ───────────────────────────────────
 const STORAGE_KEYS = {
@@ -490,7 +491,10 @@ export default function App() {
         <div className="max-w-3xl mx-auto px-4">
           <div className="flex items-center justify-between py-3">
             <div className="flex items-center gap-2"><div className="w-6 h-6 bg-zinc-100 rounded-md flex items-center justify-center"><span className="text-zinc-900 text-xs font-bold">N</span></div><span className="text-sm font-semibold text-zinc-200 tracking-tight">Nouvia Strategist</span></div>
-            <button onClick={toggleTheme} className="w-8 h-8 rounded-lg bg-zinc-800 hover:bg-zinc-700 flex items-center justify-center transition-colors text-sm" title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}>{theme === "dark" ? "☀" : "☾"}</button>
+            <div className="flex items-center gap-1.5">
+              <button onClick={toggleTheme} className="w-8 h-8 rounded-lg bg-zinc-800 hover:bg-zinc-700 flex items-center justify-center transition-colors text-sm" title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}>{theme === "dark" ? "☀" : "☾"}</button>
+              <button onClick={() => auth.signOut()} className="px-2.5 h-8 rounded-lg bg-zinc-800 hover:bg-zinc-700 flex items-center justify-center transition-colors text-xs text-zinc-400 hover:text-zinc-300" title="Sign out">Sign out</button>
+            </div>
           </div>
           <div className="flex gap-0.5 -mb-px overflow-x-auto">
             {TABS.map(t => <button key={t.id} onClick={() => setTab(t.id)} className={`px-2.5 py-2 text-xs font-medium whitespace-nowrap border-b-2 transition-colors ${tab === t.id ? "border-zinc-100 text-zinc-100" : "border-transparent text-zinc-500 hover:text-zinc-300"}`}><span className="mr-1">{t.icon}</span>{t.label}</button>)}
