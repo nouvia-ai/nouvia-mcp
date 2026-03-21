@@ -3,6 +3,7 @@ import { getData, setData } from './storage';
 import { auth } from './firebase';
 import Navigation from './components/layout/Navigation';
 import AppShell from './components/layout/AppShell';
+import { useTrackerEvents } from './hooks/useTrackerEvents';
 
 // ─── CONSTANTS ──────────────────────────────────
 const STORAGE_KEYS = {
@@ -172,12 +173,12 @@ function ClientDetail({ client, onAddNote, onBack, onUpdateStage }) {
   );
 }
 
-function ClientsTab({ clients, setClients, saveClients }) {
+function ClientsTab({ clients, setClients, saveClients, track }) {
   const [showForm, setShowForm] = useState(false);
   const [selected, setSelected] = useState(null);
-  const add = (f) => { const u = [...clients, { ...f, id: uuid(), entries: [], createdAt: today() }]; setClients(u); saveClients(u); setShowForm(false); };
-  const addNote = (cid, n) => { const u = clients.map(c => c.id === cid ? { ...c, entries: [...(c.entries || []), { ...n, id: uuid() }] } : c); setClients(u); saveClients(u); setSelected(u.find(c => c.id === cid)); };
-  const updStage = (cid, st) => { const u = clients.map(c => c.id === cid ? { ...c, adoptionStage: st } : c); setClients(u); saveClients(u); setSelected(u.find(c => c.id === cid)); };
+  const add = (f) => { const id = uuid(); const u = [...clients, { ...f, id, entries: [], createdAt: today() }]; setClients(u); saveClients(u); setShowForm(false); track('item_added', { tab: 'clients', entity_type: 'client', entity_id: id }); };
+  const addNote = (cid, n) => { const u = clients.map(c => c.id === cid ? { ...c, entries: [...(c.entries || []), { ...n, id: uuid() }] } : c); setClients(u); saveClients(u); setSelected(u.find(c => c.id === cid)); track('item_added', { tab: 'clients', entity_type: 'client_note', entity_id: cid }); };
+  const updStage = (cid, st) => { const u = clients.map(c => c.id === cid ? { ...c, adoptionStage: st } : c); setClients(u); saveClients(u); setSelected(u.find(c => c.id === cid)); track('status_changed', { tab: 'clients', entity_type: 'client', entity_id: cid, metadata: { to_status: st } }); };
   if (selected) return <ClientDetail client={selected} onBack={() => setSelected(null)} onAddNote={n => addNote(selected.id, n)} onUpdateStage={s => updStage(selected.id, s)} />;
   return (
     <div>
@@ -214,12 +215,12 @@ function ExperimentForm({ onSave, onCancel }) {
   );
 }
 
-function ExperimentsTab({ experiments, setExperiments, saveExperiments }) {
+function ExperimentsTab({ experiments, setExperiments, saveExperiments, track }) {
   const [showForm, setShowForm] = useState(false);
   const [editId, setEditId] = useState(null);
-  const add = (f) => { const u = [...experiments, { ...f, id: uuid() }]; setExperiments(u); saveExperiments(u); setShowForm(false); };
-  const updStatus = (id, st) => { const u = experiments.map(e => e.id === id ? { ...e, status: st } : e); setExperiments(u); saveExperiments(u); };
-  const updResult = (id, r) => { const u = experiments.map(e => e.id === id ? { ...e, result: r } : e); setExperiments(u); saveExperiments(u); setEditId(null); };
+  const add = (f) => { const id = uuid(); const u = [...experiments, { ...f, id }]; setExperiments(u); saveExperiments(u); setShowForm(false); track('item_added', { tab: 'experiments', entity_type: 'experiment', entity_id: id }); };
+  const updStatus = (id, st) => { const u = experiments.map(e => e.id === id ? { ...e, status: st } : e); setExperiments(u); saveExperiments(u); track('status_changed', { tab: 'experiments', entity_type: 'experiment', entity_id: id, metadata: { to_status: st } }); };
+  const updResult = (id, r) => { const u = experiments.map(e => e.id === id ? { ...e, result: r } : e); setExperiments(u); saveExperiments(u); setEditId(null); track('item_added', { tab: 'experiments', entity_type: 'experiment_result', entity_id: id }); };
   return (
     <div>
       <div className="flex items-center justify-between mb-4"><h2 className="text-sm font-semibold text-[var(--color-text-secondary)] uppercase tracking-wider">Experiments</h2><Btn small primary onClick={() => setShowForm(true)}>+ New Experiment</Btn></div>
@@ -744,12 +745,18 @@ export default function App() {
   const [tab, setTab]     = useState("dashboard");
   const [loading, setLoading] = useState(true);
   const [theme, setTheme] = useState(() => localStorage.getItem("strategist:theme") || "dark");
+  const track = useTrackerEvents();
 
   const toggleTheme = () => {
     const next = theme === "dark" ? "light" : "dark";
     setTheme(next);
     localStorage.setItem("strategist:theme", next);
   };
+
+  // Track tab navigation
+  useEffect(() => {
+    track('tab_viewed', { tab });
+  }, [tab, track]);
 
   const [clients,     setClients]     = useState([]);
   const [experiments, setExperiments] = useState([]);
@@ -815,8 +822,8 @@ export default function App() {
       <AppShell nav={nav} wideContent={tab === "canvas"}>
         {tab === "dashboard"   && <Dashboard clients={clients} experiments={experiments} decisions={decisions} trends={trends} canvas={canvas} coworkers={coworkers} skills={skills} connectors={connectors} setTab={setTab} />}
         {tab === "canvas"      && <CanvasTab canvas={canvas} setCanvas={setCanvas} saveCanvas={sv} />}
-        {tab === "clients"     && <ClientsTab clients={clients} setClients={setClients} saveClients={sc} />}
-        {tab === "experiments" && <ExperimentsTab experiments={experiments} setExperiments={setExperiments} saveExperiments={se} />}
+        {tab === "clients"     && <ClientsTab clients={clients} setClients={setClients} saveClients={sc} track={track} />}
+        {tab === "experiments" && <ExperimentsTab experiments={experiments} setExperiments={setExperiments} saveExperiments={se} track={track} />}
         {tab === "decisions"   && <DecisionsTab decisions={decisions} setDecisions={setDecisions} saveDecisions={sd} />}
         {tab === "trends"      && <TrendsTab trends={trends} setTrends={setTrends} saveTrends={stv} />}
         {tab === "coworkers"   && <CoworkersTab coworkers={coworkers} setCoworkers={setCoworkers} saveCoworkers={sw} canvas={canvas} skills={skills} setSkills={setSkills} saveSkills={sskl} connectors={connectors} setConnectors={setConnectors} saveConnectors={scn} />}
