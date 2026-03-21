@@ -5,6 +5,7 @@ import Navigation from './components/layout/Navigation';
 import AppShell from './components/layout/AppShell';
 import { useTrackerEvents } from './hooks/useTrackerEvents';
 import IPLibraryTab from './tabs/IPLibraryTab';
+import DashboardTab from './tabs/DashboardTab';
 
 // ─── CONSTANTS ──────────────────────────────────
 const STORAGE_KEYS = {
@@ -821,7 +822,7 @@ export default function App() {
   return (
     <div data-theme={theme}>
       <AppShell nav={nav} wideContent={tab === "canvas"}>
-        {tab === "dashboard"   && <Dashboard clients={clients} experiments={experiments} decisions={decisions} trends={trends} canvas={canvas} coworkers={coworkers} skills={skills} connectors={connectors} setTab={setTab} />}
+        {tab === "dashboard"   && <DashboardTab clients={clients} experiments={experiments} canvas={canvas} coworkers={coworkers} skills={skills} connectors={connectors} setTab={setTab} />}
         {tab === "canvas"      && <CanvasTab canvas={canvas} setCanvas={setCanvas} saveCanvas={sv} />}
         {tab === "clients"     && <ClientsTab clients={clients} setClients={setClients} saveClients={sc} track={track} />}
         {tab === "experiments" && <ExperimentsTab experiments={experiments} setExperiments={setExperiments} saveExperiments={se} track={track} />}
