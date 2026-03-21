@@ -4,6 +4,7 @@ import { auth } from './firebase';
 import Navigation from './components/layout/Navigation';
 import AppShell from './components/layout/AppShell';
 import { useTrackerEvents } from './hooks/useTrackerEvents';
+import IPLibraryTab from './tabs/IPLibraryTab';
 
 // ─── CONSTANTS ──────────────────────────────────
 const STORAGE_KEYS = {
@@ -827,11 +828,7 @@ export default function App() {
         {tab === "decisions"   && <DecisionsTab decisions={decisions} setDecisions={setDecisions} saveDecisions={sd} />}
         {tab === "trends"      && <TrendsTab trends={trends} setTrends={setTrends} saveTrends={stv} />}
         {tab === "coworkers"   && <CoworkersTab coworkers={coworkers} setCoworkers={setCoworkers} saveCoworkers={sw} canvas={canvas} skills={skills} setSkills={setSkills} saveSkills={sskl} connectors={connectors} setConnectors={setConnectors} saveConnectors={scn} />}
-        {tab === "ip_library"  && (
-          <div style={{ color: "var(--color-text-muted)", fontSize: "var(--font-size-sm)", textAlign: "center", paddingTop: "var(--space-12)" }}>
-            IP Library — coming in TASK-09
-          </div>
-        )}
+        {tab === "ip_library"  && <IPLibraryTab />}
       </AppShell>
     </div>
   );
