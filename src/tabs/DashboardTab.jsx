@@ -121,9 +121,9 @@ function DashboardView({ setTab, onNavigate, nasProps, riskProps, channelsProps,
   const handleGoToExperiments = () => setTab?.('experiments');
 
   // Extract summary data for KPI tiles
-  const nasScore = nasProps?.aggregateNAS;
-  const nasStatus = nasScore?.status || 'pending';
-  const nasValue = nasScore?.nas_score != null ? nasScore.nas_score : '—';
+  // aggregateNAS is a plain number (average score) or null
+  const nasValue = nasProps?.aggregateNAS != null ? nasProps.aggregateNAS : '\u2014';
+  const nasStatus = nasValue === '\u2014' ? 'pending' : nasValue >= 70 ? 'healthy' : nasValue >= 50 ? 'on_track' : nasValue >= 30 ? 'at_risk' : 'critical';
   const nasStatusLabel = nasStatus === 'healthy' ? 'Healthy' : nasStatus === 'on_track' ? 'On Track' : nasStatus === 'at_risk' ? 'At Risk' : nasStatus === 'critical' ? 'Critical' : 'Pending';
   const nasColor = nasStatus === 'healthy' ? 'var(--color-success)' : nasStatus === 'on_track' ? 'var(--color-warning)' : nasStatus === 'at_risk' ? 'var(--color-warning)' : nasStatus === 'critical' ? 'var(--color-error)' : 'var(--color-text-muted)';
 
@@ -140,7 +140,7 @@ function DashboardView({ setTab, onNavigate, nasProps, riskProps, channelsProps,
       <div style={{ display: 'flex', gap: S.cardGap, marginBottom: S.sectionGap }}>
         <KPITile
           value={`${nasValue}/100`}
-          label="NAS Score"
+          label="Adoption Score"
           sub={`\u{2022} ${nasStatusLabel}`}
           color={nasColor}
         />
