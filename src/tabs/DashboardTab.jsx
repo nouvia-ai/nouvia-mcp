@@ -13,6 +13,7 @@ import KeyFindings        from '../components/Cockpit/LearnSection/KeyFindings';
 import ExperimentSummary  from '../components/Cockpit/LearnSection/ExperimentSummary';
 import FlywheelConnection from '../components/Cockpit/LearnSection/FlywheelConnection';
 import { NASSection }     from '../components/NAS/NASWidget';
+import { RiskSignalsSection } from '../components/Risk/RiskWidget';
 
 /* ── Layout tokens ──────────────────────────────── */
 const SECTION_GAP  = 'var(--space-6)';
@@ -81,7 +82,7 @@ function PlaceholderCard({ icon, title, subtitle }) {
   );
 }
 
-export default function DashboardTab({ setTab, nasProps }) {
+export default function DashboardTab({ setTab, nasProps, riskProps }) {
   const handleGoToGoals      = () => setTab?.('goals');
   const handleGoToExperiments = () => setTab?.('experiments');
 
@@ -118,11 +119,15 @@ export default function DashboardTab({ setTab, nasProps }) {
             title="Governance Queue"
             subtitle="No items pending governance"
           />
-          <PlaceholderCard
-            icon="⚡"
-            title="Risk Signals"
-            subtitle="Risk Intelligence coming in Phase 4"
-          />
+          {riskProps ? (
+            <RiskSignalsSection {...riskProps} />
+          ) : (
+            <PlaceholderCard
+              icon="⚡"
+              title="Risk Signals"
+              subtitle="Loading risk data..."
+            />
+          )}
           {nasProps ? (
             <NASSection {...nasProps} />
           ) : (

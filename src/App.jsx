@@ -10,6 +10,8 @@ import PipelineTab     from './tabs/PipelineTab';
 import GoalManagement  from './components/Goals/GoalManagement';
 import useAdoptionScores from './hooks/useAdoptionScores';
 import { NASDetail, NASEditForm } from './components/NAS/NASWidget';
+import useRiskAssessments from './hooks/useRiskAssessments';
+import { RiskDetail, RiskEditForm } from './components/Risk/RiskWidget';
 
 // ─── CONSTANTS ──────────────────────────────────
 const STORAGE_KEYS = {
@@ -777,6 +779,11 @@ export default function App() {
   const [nasDetailClient, setNasDetailClient] = useState(null);
   const [nasEditing, setNasEditing]           = useState(false);
 
+  // Risk state
+  const riskData = useRiskAssessments();
+  const [riskDetailItem, setRiskDetailItem] = useState(null);
+  const [riskEditing, setRiskEditing]       = useState(false);
+
   const toggleTheme = () => {
     const next = theme === "dark" ? "light" : "dark";
     setTheme(next);
@@ -788,6 +795,8 @@ export default function App() {
     setSubTab(sub);
     setNasDetailClient(null);
     setNasEditing(false);
+    setRiskDetailItem(null);
+    setRiskEditing(false);
   };
 
   // Legacy setTab bridge for components that call setTab('goals') etc.
@@ -871,10 +880,14 @@ export default function App() {
     <div data-theme={theme}>
       <AppShell nav={nav} wideContent={activeView === "canvas"}>
         {/* Dashboard */}
-        {activeView === "dashboard" && !nasDetailClient && <DashboardTab clients={clients} experiments={experiments} canvas={canvas} coworkers={coworkers} skills={skills} connectors={connectors} setTab={setTab} nasProps={{
+        {activeView === "dashboard" && !nasDetailClient && !riskDetailItem && <DashboardTab clients={clients} experiments={experiments} canvas={canvas} coworkers={coworkers} skills={skills} connectors={connectors} setTab={setTab} nasProps={{
           scores: nas.scores, configs: nas.configs, aggregateNAS: nas.aggregateNAS,
           loading: nas.loading, updateScore: nas.updateScore, getConfig: nas.getConfig,
           onNavigateToDetail: (score) => setNasDetailClient(score),
+        }} riskProps={{
+          risks: riskData.risks,
+          loading: riskData.loading,
+          onSelectRisk: (risk) => setRiskDetailItem(risk),
         }} />}
         {activeView === "dashboard" && nasDetailClient && !nasEditing && (
           <NASDetail
@@ -893,6 +906,24 @@ export default function App() {
               setNasEditing(false);
             }}
             onCancel={() => setNasEditing(false)}
+          />
+        )}
+        {activeView === "dashboard" && riskDetailItem && !riskEditing && (
+          <RiskDetail
+            risk={riskDetailItem}
+            onBack={() => setRiskDetailItem(null)}
+            onUpdate={() => setRiskEditing(true)}
+          />
+        )}
+        {activeView === "dashboard" && riskDetailItem && riskEditing && (
+          <RiskEditForm
+            risk={riskDetailItem}
+            onSave={async (updates) => {
+              await riskData.updateRisk(riskDetailItem.id, updates);
+              setRiskDetailItem({ ...riskDetailItem, ...updates });
+              setRiskEditing(false);
+            }}
+            onCancel={() => setRiskEditing(false)}
           />
         )}
 
