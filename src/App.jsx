@@ -574,7 +574,7 @@ function SkillsPane({ skills, setSkills, saveSkills }) {
             {sk.description && <p className="text-xs text-[var(--color-text-muted)] mb-1.5">{sk.description}</p>}
             <div className="flex gap-1 flex-wrap mt-1">
               <Badge variant={cwStatusBV(sk.status)}>{sk.status}</Badge>
-              {sk.coworkers && sk.coworkers.split(",").map((c, i) => <Badge key={i} variant="cyan">{c.trim()}</Badge>)}
+              {sk.coworkers && (Array.isArray(sk.coworkers) ? sk.coworkers : sk.coworkers.split(",")).map((c, i) => <Badge key={i} variant="cyan">{typeof c === 'string' ? c.trim() : c}</Badge>)}
               {sk.version   && <Badge variant="default">{sk.version}</Badge>}
             </div>
             {sk.skillFilePath && <p className="text-xs text-[var(--color-text-ghost)] mt-1.5 font-mono truncate">{sk.skillFilePath}</p>}
