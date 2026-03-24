@@ -12,6 +12,7 @@ import WeeklyTodos        from '../components/Cockpit/BuildSection/WeeklyTodos';
 import KeyFindings        from '../components/Cockpit/LearnSection/KeyFindings';
 import ExperimentSummary  from '../components/Cockpit/LearnSection/ExperimentSummary';
 import FlywheelConnection from '../components/Cockpit/LearnSection/FlywheelConnection';
+import { NASSection }     from '../components/NAS/NASWidget';
 
 /* ── Layout tokens ──────────────────────────────── */
 const SECTION_GAP  = 'var(--space-6)';
@@ -80,7 +81,7 @@ function PlaceholderCard({ icon, title, subtitle }) {
   );
 }
 
-export default function DashboardTab({ setTab }) {
+export default function DashboardTab({ setTab, nasProps }) {
   const handleGoToGoals      = () => setTab?.('goals');
   const handleGoToExperiments = () => setTab?.('experiments');
 
@@ -122,11 +123,15 @@ export default function DashboardTab({ setTab }) {
             title="Risk Signals"
             subtitle="Risk Intelligence coming in Phase 4"
           />
-          <PlaceholderCard
-            icon="📈"
-            title="Nouvia Adoption Score"
-            subtitle="Adoption scoring coming in Phase 3"
-          />
+          {nasProps ? (
+            <NASSection {...nasProps} />
+          ) : (
+            <PlaceholderCard
+              icon="📈"
+              title="Nouvia Adoption Score"
+              subtitle="Loading adoption data..."
+            />
+          )}
         </div>
       </div>
 

@@ -8,6 +8,8 @@ import IPLibraryTab    from './tabs/IPLibraryTab';
 import DashboardTab    from './tabs/DashboardTab';
 import PipelineTab     from './tabs/PipelineTab';
 import GoalManagement  from './components/Goals/GoalManagement';
+import useAdoptionScores from './hooks/useAdoptionScores';
+import { NASDetail, NASEditForm } from './components/NAS/NASWidget';
 
 // ─── CONSTANTS ──────────────────────────────────
 const STORAGE_KEYS = {
@@ -770,6 +772,11 @@ export default function App() {
   const [theme, setTheme] = useState(() => localStorage.getItem("strategist:theme") || "dark");
   const track = useTrackerEvents();
 
+  // NAS state
+  const nas = useAdoptionScores();
+  const [nasDetailClient, setNasDetailClient] = useState(null);
+  const [nasEditing, setNasEditing]           = useState(false);
+
   const toggleTheme = () => {
     const next = theme === "dark" ? "light" : "dark";
     setTheme(next);
@@ -779,6 +786,8 @@ export default function App() {
   const handleNavigate = (sec, sub) => {
     setSection(sec);
     setSubTab(sub);
+    setNasDetailClient(null);
+    setNasEditing(false);
   };
 
   // Legacy setTab bridge for components that call setTab('goals') etc.
@@ -862,7 +871,30 @@ export default function App() {
     <div data-theme={theme}>
       <AppShell nav={nav} wideContent={activeView === "canvas"}>
         {/* Dashboard */}
-        {activeView === "dashboard"  && <DashboardTab clients={clients} experiments={experiments} canvas={canvas} coworkers={coworkers} skills={skills} connectors={connectors} setTab={setTab} />}
+        {activeView === "dashboard" && !nasDetailClient && <DashboardTab clients={clients} experiments={experiments} canvas={canvas} coworkers={coworkers} skills={skills} connectors={connectors} setTab={setTab} nasProps={{
+          scores: nas.scores, configs: nas.configs, aggregateNAS: nas.aggregateNAS,
+          loading: nas.loading, updateScore: nas.updateScore, getConfig: nas.getConfig,
+          onNavigateToDetail: (score) => setNasDetailClient(score),
+        }} />}
+        {activeView === "dashboard" && nasDetailClient && !nasEditing && (
+          <NASDetail
+            score={nasDetailClient}
+            config={nas.getConfig(nasDetailClient.client_id)}
+            onBack={() => setNasDetailClient(null)}
+            onEdit={() => setNasEditing(true)}
+          />
+        )}
+        {activeView === "dashboard" && nasDetailClient && nasEditing && (
+          <NASEditForm
+            score={nasDetailClient}
+            onSave={async (updates) => {
+              await nas.updateScore(nasDetailClient.client_id, updates);
+              setNasDetailClient({ ...nasDetailClient, ...updates });
+              setNasEditing(false);
+            }}
+            onCancel={() => setNasEditing(false)}
+          />
+        )}
 
         {/* BSP sub-tabs */}
         {activeView === "canvas"      && <CanvasTab canvas={canvas} setCanvas={setCanvas} saveCanvas={sv} />}
