@@ -15,6 +15,7 @@ import FlywheelConnection from '../components/Cockpit/LearnSection/FlywheelConne
 import { NASSection }     from '../components/NAS/NASWidget';
 import { RiskSignalsSection } from '../components/Risk/RiskWidget';
 import { ChannelsSection } from '../components/Channels/ChannelsWidget';
+import { GovernanceSection } from '../components/Governance/GovernanceWidget';
 
 /* ── Layout tokens ──────────────────────────────── */
 const SECTION_GAP  = 'var(--space-6)';
@@ -83,12 +84,19 @@ function PlaceholderCard({ icon, title, subtitle }) {
   );
 }
 
-export default function DashboardTab({ setTab, nasProps, riskProps, channelsProps }) {
+export default function DashboardTab({ setTab, nasProps, riskProps, channelsProps, governanceProps }) {
   const handleGoToGoals      = () => setTab?.('goals');
   const handleGoToExperiments = () => setTab?.('experiments');
 
   return (
     <div style={{ fontFamily: 'var(--font-sans)', minWidth: 1280 }}>
+
+      {/* ══════════ GOVERNANCE QUEUE ══════════ */}
+      {governanceProps && (
+        <div style={{ marginBottom: SECTION_GAP }}>
+          <GovernanceSection {...governanceProps} />
+        </div>
+      )}
 
       {/* ══════════ MEASURE ══════════ */}
       <div style={{ marginBottom: SECTION_GAP }}>

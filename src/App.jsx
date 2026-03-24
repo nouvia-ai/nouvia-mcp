@@ -14,6 +14,8 @@ import useRiskAssessments from './hooks/useRiskAssessments';
 import { RiskDetail, RiskEditForm } from './components/Risk/RiskWidget';
 import useChannels from './hooks/useChannels';
 import { ChannelDetail, ChannelEditForm } from './components/Channels/ChannelsWidget';
+import useGovernanceQueue from './hooks/useGovernanceQueue';
+import { GovernanceDetail } from './components/Governance/GovernanceWidget';
 
 // ─── CONSTANTS ──────────────────────────────────
 const STORAGE_KEYS = {
@@ -792,6 +794,10 @@ export default function App() {
   const [channelEditing, setChannelEditing]       = useState(false);
   const [channelAdding, setChannelAdding]         = useState(false);
 
+  // Governance state
+  const govData = useGovernanceQueue();
+  const [govDetailItem, setGovDetailItem] = useState(null);
+
   const toggleTheme = () => {
     const next = theme === "dark" ? "light" : "dark";
     setTheme(next);
@@ -875,9 +881,16 @@ export default function App() {
     </div>
   );
 
+  // Inject governance count into Dashboard section label
+  const sectionsWithBadge = NIP_SECTIONS.map(s =>
+    s.id === "dashboard" && govData.pendingCount > 0
+      ? { ...s, label: `Dashboard (${govData.pendingCount})` }
+      : s
+  );
+
   const nav = (
     <Navigation
-      sections={NIP_SECTIONS}
+      sections={sectionsWithBadge}
       activeSection={section}
       activeSubTab={subTab}
       onNavigate={handleNavigate}
@@ -891,7 +904,7 @@ export default function App() {
     <div data-theme={theme}>
       <AppShell nav={nav} wideContent={activeView === "canvas"}>
         {/* Dashboard */}
-        {activeView === "dashboard" && !nasDetailClient && !riskDetailItem && !channelDetailItem && !channelAdding && <DashboardTab clients={clients} experiments={experiments} canvas={canvas} coworkers={coworkers} skills={skills} connectors={connectors} setTab={setTab} nasProps={{
+        {activeView === "dashboard" && !nasDetailClient && !riskDetailItem && !channelDetailItem && !channelAdding && !govDetailItem && <DashboardTab clients={clients} experiments={experiments} canvas={canvas} coworkers={coworkers} skills={skills} connectors={connectors} setTab={setTab} nasProps={{
           scores: nas.scores, configs: nas.configs, aggregateNAS: nas.aggregateNAS,
           loading: nas.loading, updateScore: nas.updateScore, getConfig: nas.getConfig,
           onNavigateToDetail: (score) => setNasDetailClient(score),
@@ -904,7 +917,19 @@ export default function App() {
           loading: channelData.loading,
           canvasLastModified: channelData.canvasLastModified,
           onSelectChannel: (ch) => setChannelDetailItem(ch),
+        }} governanceProps={{
+          pendingItems: govData.pendingItems,
+          resolvedItems: govData.resolvedItems,
+          onResolve: govData.resolveItem,
+          onExpand: (item) => setGovDetailItem(item),
         }} />}
+        {activeView === "dashboard" && govDetailItem && (
+          <GovernanceDetail
+            item={govDetailItem}
+            onResolve={async (id, status, notes, opt) => { await govData.resolveItem(id, status, notes, opt); setGovDetailItem(null); }}
+            onBack={() => setGovDetailItem(null)}
+          />
+        )}
         {activeView === "dashboard" && nasDetailClient && !nasEditing && (
           <NASDetail
             score={nasDetailClient}
