@@ -188,22 +188,22 @@ function PortalDashboard({ projects, activity, onNavigate }) {
   );
 }
 
-/* ═══════════ SECTION 2: PROJECTS ═══════════ */
+/* ═══════════ SECTION 2: BACKLOG (KANBAN BOARD) ═══════════ */
 function PortalProjects({ projects, updateProject, onSubmitRequest }) {
   const [showRequestForm, setShowRequestForm] = useState(false);
   const [reqTitle, setReqTitle] = useState('');
   const [reqDesc, setReqDesc] = useState('');
   const [reqUrgency, setReqUrgency] = useState('medium');
-  const [expandedProject, setExpandedProject] = useState(null);
+  const [detailProject, setDetailProject] = useState(null);
 
-  const stages = [
-    { key: 'requested', label: 'Requested' },
-    { key: 'scoping', label: 'Scoping' },
-    { key: 'estimated', label: 'Ready for Review' },
-    { key: 'approved', label: 'Approved' },
-    { key: 'in_progress', label: 'In Progress' },
-    { key: 'delivered', label: 'Delivered' },
-    { key: 'accepted', label: 'Accepted' },
+  const columns = [
+    { key: 'requested',   label: 'Requested',        headerColor: '#8E8E93' },
+    { key: 'scoping',     label: 'Scoping',          headerColor: '#c49a3c' },
+    { key: 'estimated',   label: 'Ready for Review',  headerColor: C.warning },
+    { key: 'approved',    label: 'Approved',          headerColor: C.primary },
+    { key: 'in_progress', label: 'In Progress',       headerColor: C.primary },
+    { key: 'delivered',   label: 'Delivered',          headerColor: C.success },
+    { key: 'accepted',    label: 'Accepted',           headerColor: '#047857' },
   ];
 
   const handleSubmitRequest = () => {
@@ -212,136 +212,291 @@ function PortalProjects({ projects, updateProject, onSubmitRequest }) {
     setReqTitle(''); setReqDesc(''); setReqUrgency('medium'); setShowRequestForm(false);
   };
 
+  const fmtValue = (v) => v ? `$${v.toLocaleString()}` : null;
+
+  const totalProjects = projects.length;
+  const totalValue = projects.reduce((s, p) => s + (p.estimated_value_usd || 0), 0);
+  const waitingCount = projects.filter(p => p.waiting_on_client).length;
+  const deliveredCount = projects.filter(p => p.stage === 'delivered' || p.stage === 'accepted').length;
+
   return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <PageTitle>Projects</PageTitle>
-        <Btn onClick={() => setShowRequestForm(true)}>+ Request a Capability</Btn>
+    <div style={{ position: 'relative' }}>
+      <PageTitle>Backlog</PageTitle>
+
+      {/* Summary strip */}
+      <div style={{
+        display: 'flex', gap: 24, marginBottom: 24, padding: '12px 20px',
+        backgroundColor: C.cardBg, borderRadius: 8, border: `1px solid ${C.border}`,
+        boxShadow: '0 1px 3px rgba(0,0,0,0.08)', fontFamily: font,
+      }}>
+        <div><span style={{ fontSize: 20, fontWeight: 600, color: C.text }}>{totalProjects}</span><span style={{ fontSize: 12, color: C.textMuted, marginLeft: 6 }}>Total Projects</span></div>
+        <div style={{ width: 1, backgroundColor: C.border }} />
+        <div><span style={{ fontSize: 20, fontWeight: 600, color: C.text }}>${totalValue.toLocaleString()}</span><span style={{ fontSize: 12, color: C.textMuted, marginLeft: 6 }}>Total Investment</span></div>
+        <div style={{ width: 1, backgroundColor: C.border }} />
+        <div><span style={{ fontSize: 20, fontWeight: 600, color: C.success }}>{deliveredCount}</span><span style={{ fontSize: 12, color: C.textMuted, marginLeft: 6 }}>Delivered</span></div>
+        {waitingCount > 0 && <>
+          <div style={{ width: 1, backgroundColor: C.border }} />
+          <div><span style={{ fontSize: 20, fontWeight: 600, color: C.warning }}>{waitingCount}</span><span style={{ fontSize: 12, color: C.textMuted, marginLeft: 6 }}>Waiting on IVC</span></div>
+        </>}
       </div>
 
-      {/* Request form modal */}
+      {/* Request form */}
       {showRequestForm && (
-        <div style={{ ...cardBase, marginBottom: 24, borderLeft: `4px solid ${C.primary}` }}>
-          <SectionTitle>Request a New Capability</SectionTitle>
-          <div style={{ marginBottom: 16 }}>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: C.textSec, marginBottom: 4, fontFamily: font }}>
-              What would you like AI to help with?
-            </label>
-            <input value={reqTitle} onChange={e => setReqTitle(e.target.value)} placeholder="e.g., Automate invoice generation..."
-              style={{ width: '100%', fontSize: 14, padding: '10px 12px', borderRadius: 8, border: `1px solid ${C.border}`, fontFamily: font, outline: 'none' }} />
-          </div>
-          <div style={{ marginBottom: 16 }}>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: C.textSec, marginBottom: 4, fontFamily: font }}>How urgent is this?</label>
-            <div style={{ display: 'flex', gap: 8 }}>
-              {['low', 'medium', 'high'].map(u => (
-                <button key={u} onClick={() => setReqUrgency(u)} style={{
-                  fontSize: 13, fontWeight: 500, padding: '6px 16px', borderRadius: 6, cursor: 'pointer', fontFamily: font,
-                  border: `1px solid ${reqUrgency === u ? C.primary : C.border}`,
-                  backgroundColor: reqUrgency === u ? '#EBF5FF' : 'transparent',
-                  color: reqUrgency === u ? C.primary : C.textSec,
-                }}>
-                  {u.charAt(0).toUpperCase() + u.slice(1)}
-                </button>
-              ))}
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.4)', zIndex: 100, display: 'flex',
+          alignItems: 'center', justifyContent: 'center',
+        }} onClick={() => setShowRequestForm(false)}>
+          <div style={{ ...cardBase, width: 500, maxWidth: '90vw', boxShadow: '0 8px 24px rgba(0,0,0,0.16)' }}
+            onClick={e => e.stopPropagation()}>
+            <SectionTitle>Request a New Capability</SectionTitle>
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: C.textSec, marginBottom: 4, fontFamily: font }}>
+                What would you like AI to help with?
+              </label>
+              <input value={reqTitle} onChange={e => setReqTitle(e.target.value)} placeholder="e.g., Automate invoice generation..."
+                style={{ width: '100%', fontSize: 14, padding: '10px 12px', borderRadius: 8, border: `1px solid ${C.border}`, fontFamily: font, outline: 'none', boxSizing: 'border-box' }} autoFocus />
             </div>
-          </div>
-          <div style={{ marginBottom: 16 }}>
-            <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: C.textSec, marginBottom: 4, fontFamily: font }}>Additional context (optional)</label>
-            <textarea value={reqDesc} onChange={e => setReqDesc(e.target.value)} rows={3} placeholder="Any details that would help us scope this..."
-              style={{ width: '100%', fontSize: 14, padding: '10px 12px', borderRadius: 8, border: `1px solid ${C.border}`, fontFamily: font, resize: 'vertical', outline: 'none' }} />
-          </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Btn onClick={handleSubmitRequest}>Submit Request</Btn>
-            <Btn variant="ghost" onClick={() => setShowRequestForm(false)}>Cancel</Btn>
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: C.textSec, marginBottom: 4, fontFamily: font }}>How urgent is this?</label>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {['low', 'medium', 'high'].map(u => (
+                  <button key={u} onClick={() => setReqUrgency(u)} style={{
+                    fontSize: 13, fontWeight: 500, padding: '6px 16px', borderRadius: 6, cursor: 'pointer', fontFamily: font,
+                    border: `1px solid ${reqUrgency === u ? C.primary : C.border}`,
+                    backgroundColor: reqUrgency === u ? '#EBF5FF' : 'transparent',
+                    color: reqUrgency === u ? C.primary : C.textSec,
+                  }}>{u.charAt(0).toUpperCase() + u.slice(1)}</button>
+                ))}
+              </div>
+            </div>
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: 'block', fontSize: 12, fontWeight: 500, color: C.textSec, marginBottom: 4, fontFamily: font }}>Additional context (optional)</label>
+              <textarea value={reqDesc} onChange={e => setReqDesc(e.target.value)} rows={3} placeholder="Any details that would help us scope this..."
+                style={{ width: '100%', fontSize: 14, padding: '10px 12px', borderRadius: 8, border: `1px solid ${C.border}`, fontFamily: font, resize: 'vertical', outline: 'none', boxSizing: 'border-box' }} />
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <Btn onClick={handleSubmitRequest}>Submit Request</Btn>
+              <Btn variant="ghost" onClick={() => setShowRequestForm(false)}>Cancel</Btn>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Project cards by stage */}
-      {stages.map(stage => {
-        const stageProjects = projects.filter(p => p.stage === stage.key);
-        if (stageProjects.length === 0) return null;
-        return (
-          <div key={stage.key} style={{ marginBottom: 24 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-              <h4 style={{ fontSize: 14, fontWeight: 600, color: C.textSec, margin: 0, textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily: font }}>
-                {stage.label}
-              </h4>
-              <Badge>{stageProjects.length}</Badge>
-            </div>
-            {stageProjects.map((p, i) => (
-              <div key={i} style={{
-                ...cardBase, marginBottom: 12, cursor: 'pointer',
-                borderLeft: p.waiting_on_client ? `4px solid ${C.warning}` : `4px solid transparent`,
-                transition: 'box-shadow 0.2s',
-              }}
-                onClick={() => setExpandedProject(expandedProject === p.title ? null : p.title)}
-                onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)'; }}
-                onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.08)'; }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
-                  <h4 style={{ fontSize: 16, fontWeight: 600, color: C.text, margin: 0, fontFamily: font }}>{p.title}</h4>
-                  <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                    <StageBadge stage={p.stage} />
-                    {p.waiting_on_client && <Badge color="#b45309" bg="#fef3c7">{"\u26a0\ufe0f"} Waiting on IVC</Badge>}
-                  </div>
+      {/* Kanban Board */}
+      <div style={{
+        display: 'flex', gap: 16, overflowX: 'auto', paddingBottom: 16, minHeight: 400,
+      }}>
+        {columns.map(col => {
+          const colProjects = projects.filter(p => p.stage === col.key);
+          const colValue = colProjects.reduce((s, p) => s + (p.estimated_value_usd || 0), 0);
+          return (
+            <div key={col.key} style={{
+              minWidth: 280, flex: '1 0 280px', display: 'flex', flexDirection: 'column',
+            }}>
+              {/* Column header */}
+              <div style={{
+                padding: '10px 12px', borderRadius: '8px 8px 0 0',
+                borderTop: `4px solid ${col.headerColor}`,
+                backgroundColor: C.cardBg, border: `1px solid ${C.border}`, borderBottom: 'none',
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: C.text, textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily: font }}>{col.label}</span>
+                  <span style={{
+                    fontSize: 11, fontWeight: 700, backgroundColor: col.headerColor, color: '#fff',
+                    borderRadius: 10, padding: '1px 8px', minWidth: 18, textAlign: 'center',
+                  }}>{colProjects.length}</span>
                 </div>
-                <p style={{ fontSize: 14, color: C.textSec, margin: 0, lineHeight: '1.5', fontFamily: font }}>{p.description}</p>
-
-                {/* Expanded view */}
-                {expandedProject === p.title && (
-                  <div style={{ marginTop: 16, paddingTop: 16, borderTop: `1px solid ${C.borderLight}` }}>
-                    {p.estimated_value_usd && (
-                      <div style={{ fontSize: 14, color: C.text, marginBottom: 8, fontFamily: font }}>
-                        <strong>Investment:</strong> ${p.estimated_value_usd.toLocaleString()}
-                        {p.notes?.includes('/month') ? '/year' : ''}
-                      </div>
-                    )}
-                    {p.estimated_delivery && (
-                      <div style={{ fontSize: 14, color: C.text, marginBottom: 8, fontFamily: font }}>
-                        <strong>Estimated delivery:</strong> {p.estimated_delivery}
-                      </div>
-                    )}
-                    {p.delivered_date && (
-                      <div style={{ fontSize: 14, color: C.success, marginBottom: 8, fontFamily: font }}>
-                        <strong>Delivered:</strong> {p.delivered_date}
-                      </div>
-                    )}
-                    {p.components?.length > 0 && (
-                      <div style={{ fontSize: 14, color: C.text, marginBottom: 8, fontFamily: font }}>
-                        <strong>Components:</strong> {p.components.join(', ')}
-                      </div>
-                    )}
-                    {p.waiting_reason && (
-                      <div style={{ fontSize: 14, color: C.warning, marginBottom: 8, fontFamily: font }}>
-                        <strong>{"\u26a0\ufe0f"} Waiting on IVC:</strong> {p.waiting_reason}
-                      </div>
-                    )}
-                    {p.notes && (
-                      <div style={{ fontSize: 14, color: C.textSec, marginBottom: 12, fontFamily: font }}>{p.notes}</div>
-                    )}
-                    {/* Action buttons */}
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      {p.stage === 'estimated' && (
-                        <>
-                          <Btn variant="success" onClick={e => { e.stopPropagation(); updateProject(p.title, { stage: 'approved' }); }}>Approve</Btn>
-                          <Btn variant="outline" onClick={e => e.stopPropagation()}>Questions?</Btn>
-                        </>
-                      )}
-                      {p.stage === 'delivered' && (
-                        <>
-                          <Btn variant="success" onClick={e => { e.stopPropagation(); updateProject(p.title, { stage: 'accepted' }); }}>Accept Delivery</Btn>
-                          <Btn variant="outline" onClick={e => e.stopPropagation()}>Request Changes</Btn>
-                        </>
-                      )}
-                    </div>
+                {colValue > 0 && (
+                  <div style={{ fontSize: 11, color: C.textMuted, marginTop: 2, fontFamily: font }}>
+                    {fmtValue(colValue)}
                   </div>
                 )}
               </div>
-            ))}
+
+              {/* Column body */}
+              <div style={{
+                flex: 1, backgroundColor: '#F2F2F7', borderRadius: '0 0 8px 8px',
+                padding: 8, display: 'flex', flexDirection: 'column', gap: 12,
+                border: `1px solid ${C.border}`, borderTop: 'none', minHeight: 120,
+              }}>
+                {colProjects.length === 0 ? (
+                  <div style={{
+                    flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 12, color: C.textMuted, fontStyle: 'italic', fontFamily: font,
+                    border: '1px dashed #D1D1D6', borderRadius: 6, padding: 16,
+                  }}>No items</div>
+                ) : (
+                  colProjects.map((p, i) => (
+                    <div key={i} style={{
+                      backgroundColor: C.cardBg, borderRadius: 8, padding: 16,
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+                      borderLeft: `4px solid ${p.waiting_on_client ? C.warning : col.headerColor}`,
+                      cursor: 'pointer', transition: 'box-shadow 0.15s',
+                    }}
+                      onClick={() => setDetailProject(p)}
+                      onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.12)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.08)'; }}
+                    >
+                      {/* Title (max 2 lines) */}
+                      <div style={{
+                        fontSize: 14, fontWeight: 600, color: C.text, lineHeight: '1.35',
+                        marginBottom: 4, fontFamily: font,
+                        display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+                      }}>{p.title}</div>
+
+                      {/* Description (1 line truncated) */}
+                      <div style={{
+                        fontSize: 13, color: C.textSec, marginBottom: 8, fontFamily: font,
+                        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                      }}>{p.description}</div>
+
+                      {/* Waiting badge */}
+                      {p.waiting_on_client && (
+                        <div style={{ marginBottom: 6 }}>
+                          <Badge color="#b45309" bg="#fef3c7">{"\u26a0\ufe0f"} Waiting on IVC</Badge>
+                          {p.waiting_reason && (
+                            <div style={{ fontSize: 11, color: C.warning, marginTop: 4, lineHeight: '1.4', fontFamily: font }}>
+                              {p.waiting_reason.length > 80 ? p.waiting_reason.slice(0, 80) + '...' : p.waiting_reason}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Value + delivery row */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: p.stage === 'estimated' || p.stage === 'delivered' ? 8 : 0 }}>
+                        {p.estimated_value_usd ? (
+                          <span style={{ fontSize: 14, fontWeight: 500, color: C.text, fontFamily: font }}>{fmtValue(p.estimated_value_usd)}</span>
+                        ) : (
+                          <span style={{ fontSize: 11, color: C.textMuted, fontFamily: font }}>TBD</span>
+                        )}
+                        {(p.delivered_date || p.estimated_delivery) && (
+                          <span style={{ fontSize: 11, color: C.textMuted, fontFamily: font }}>
+                            {p.delivered_date ? `\u2713 ${p.delivered_date.replace('2026-', '')}` : `Est. ${p.estimated_delivery?.replace('2026-', '')}`}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Inline action button */}
+                      {p.stage === 'estimated' && (
+                        <Btn variant="success" onClick={e => { e.stopPropagation(); updateProject(p.title, { stage: 'approved' }); }} style={{ fontSize: 12, padding: '6px 16px', width: '100%' }}>
+                          Approve
+                        </Btn>
+                      )}
+                      {p.stage === 'delivered' && (
+                        <Btn variant="success" onClick={e => { e.stopPropagation(); updateProject(p.title, { stage: 'accepted' }); }} style={{ fontSize: 12, padding: '6px 16px', width: '100%' }}>
+                          Accept Delivery
+                        </Btn>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Detail slide-in panel */}
+      {detailProject && (
+        <div style={{
+          position: 'fixed', top: 0, right: 0, bottom: 0, width: 420,
+          backgroundColor: C.cardBg, boxShadow: '-4px 0 24px rgba(0,0,0,0.15)',
+          zIndex: 100, overflowY: 'auto', padding: 32, fontFamily: font,
+        }}>
+          <button onClick={() => setDetailProject(null)} style={{
+            position: 'absolute', top: 16, right: 16, background: 'none', border: 'none',
+            fontSize: 20, color: C.textMuted, cursor: 'pointer', padding: 4,
+          }}>{"\u2715"}</button>
+
+          <StageBadge stage={detailProject.stage} />
+          <h2 style={{ fontSize: 20, fontWeight: 600, color: C.text, margin: '16px 0 8px', lineHeight: '1.3' }}>{detailProject.title}</h2>
+          <p style={{ fontSize: 14, color: C.textSec, lineHeight: '1.6', margin: '0 0 20px' }}>{detailProject.description}</p>
+
+          {detailProject.estimated_value_usd && (
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 12, fontWeight: 500, color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>Investment</div>
+              <div style={{ fontSize: 20, fontWeight: 600, color: C.text }}>{fmtValue(detailProject.estimated_value_usd)}</div>
+            </div>
+          )}
+
+          {(detailProject.delivered_date || detailProject.estimated_delivery) && (
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 12, fontWeight: 500, color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>
+                {detailProject.delivered_date ? 'Delivered' : 'Estimated Delivery'}
+              </div>
+              <div style={{ fontSize: 14, fontWeight: 500, color: detailProject.delivered_date ? C.success : C.text }}>
+                {detailProject.delivered_date || detailProject.estimated_delivery}
+              </div>
+            </div>
+          )}
+
+          {detailProject.components?.length > 0 && (
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 12, fontWeight: 500, color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 4 }}>Components</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                {detailProject.components.map((c, i) => (
+                  <Badge key={i}>{c}</Badge>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {detailProject.waiting_on_client && detailProject.waiting_reason && (
+            <div style={{
+              marginBottom: 16, padding: 12, borderRadius: 8,
+              backgroundColor: '#fef3c7', border: '1px solid #f59e0b',
+            }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: '#92400e', marginBottom: 4 }}>{"\u26a0\ufe0f"} Waiting on IVC</div>
+              <div style={{ fontSize: 13, color: '#92400e', lineHeight: '1.5' }}>{detailProject.waiting_reason}</div>
+            </div>
+          )}
+
+          {detailProject.notes && (
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 12, fontWeight: 500, color: C.textMuted, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 2 }}>Notes</div>
+              <div style={{ fontSize: 13, color: C.textSec, lineHeight: '1.5' }}>{detailProject.notes}</div>
+            </div>
+          )}
+
+          {/* Action buttons */}
+          <div style={{ display: 'flex', gap: 8, marginTop: 24, paddingTop: 16, borderTop: `1px solid ${C.border}` }}>
+            {detailProject.stage === 'estimated' && (
+              <>
+                <Btn variant="success" onClick={() => { updateProject(detailProject.title, { stage: 'approved' }); setDetailProject(null); }}>Approve</Btn>
+                <Btn variant="outline">Questions?</Btn>
+              </>
+            )}
+            {detailProject.stage === 'delivered' && (
+              <>
+                <Btn variant="success" onClick={() => { updateProject(detailProject.title, { stage: 'accepted' }); setDetailProject(null); }}>Accept Delivery</Btn>
+                <Btn variant="outline">Request Changes</Btn>
+              </>
+            )}
           </div>
-        );
-      })}
+        </div>
+      )}
+      {/* Backdrop for detail panel */}
+      {detailProject && (
+        <div onClick={() => setDetailProject(null)} style={{
+          position: 'fixed', top: 0, left: 0, right: 420, bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.2)', zIndex: 99,
+        }} />
+      )}
+
+      {/* FAB — Request a Capability */}
+      <button onClick={() => setShowRequestForm(true)} style={{
+        position: 'fixed', bottom: 32, right: 32, width: 56, height: 56,
+        borderRadius: '50%', backgroundColor: C.primary, color: '#fff',
+        border: 'none', cursor: 'pointer', fontSize: 24, fontWeight: 300,
+        boxShadow: '0 4px 12px rgba(10,132,255,0.4)', zIndex: 50,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        transition: 'transform 0.2s, box-shadow 0.2s',
+      }}
+        onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.1)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(10,132,255,0.5)'; }}
+        onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(10,132,255,0.4)'; }}
+        title="Request a Capability"
+      >+</button>
     </div>
   );
 }
@@ -565,7 +720,7 @@ export default function Portal() {
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: '\u25c8' },
-    { id: 'projects', label: 'Projects', icon: '\u25a3' },
+    { id: 'projects', label: 'Backlog', icon: '\u25a3' },
     { id: 'roadmap', label: 'Roadmap', icon: '\u25b7' },
     { id: 'health', label: 'Platform Health', icon: '\u2764' },
     { id: 'documents', label: 'Documents', icon: '\ud83d\udcc4' },
