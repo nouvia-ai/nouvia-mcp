@@ -7,6 +7,7 @@ import { useTrackerEvents } from './hooks/useTrackerEvents';
 import IPLibraryTab    from './tabs/IPLibraryTab';
 import DashboardTab    from './tabs/DashboardTab';
 import PipelineTab     from './tabs/PipelineTab';
+import CompetitiveLandscapeTab from './tabs/CompetitiveLandscapeTab';
 import GoalManagement  from './components/Goals/GoalManagement';
 import useAdoptionScores from './hooks/useAdoptionScores';
 import { NASDetail, NASEditForm } from './components/NAS/NASWidget';
@@ -129,6 +130,7 @@ const NIP_SECTIONS = [
       { id: "experiments", label: "Experiments", icon: "△" },
       { id: "decisions",   label: "Decisions",   icon: "◆" },
       { id: "trends",      label: "Trends",      icon: "〜" },
+      { id: "competitive", label: "Competitive",  icon: "⚔" },
     ],
   },
   {
@@ -1021,6 +1023,7 @@ export default function App() {
         {activeView === "experiments" && <ExperimentsTab experiments={experiments} setExperiments={setExperiments} saveExperiments={se} track={track} />}
         {activeView === "decisions"   && <DecisionsTab decisions={decisions} setDecisions={setDecisions} saveDecisions={sd} />}
         {activeView === "trends"      && <TrendsTab trends={trends} setTrends={setTrends} saveTrends={stv} />}
+        {activeView === "competitive" && <CompetitiveLandscapeTab />}
 
         {/* Funnel sub-tabs */}
         {activeView === "clients"     && <ClientsTab clients={clients} setClients={setClients} saveClients={sc} track={track} />}
