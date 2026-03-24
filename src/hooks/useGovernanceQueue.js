@@ -69,6 +69,7 @@ function buildSeedItems() {
       ],
       related_collection: "adoption_scores",
       related_doc_id: "ivc",
+      goal_title: "Achieve Product-Market Fit \u2014 5 paying clients on managed platform by June 30, 2026",
       status: "pending",
     },
     {
@@ -83,6 +84,7 @@ function buildSeedItems() {
       options: [],
       related_collection: "pipeline",
       related_doc_id: null,
+      goal_title: "Generate $1,000,000 in revenue by December 31, 2026",
       status: "pending",
     },
     {
@@ -97,6 +99,7 @@ function buildSeedItems() {
       options: [],
       related_collection: "channels",
       related_doc_id: null,
+      goal_title: "Achieve Product-Market Fit \u2014 5 paying clients on managed platform by June 30, 2026",
       status: "pending",
     },
     {
@@ -115,6 +118,7 @@ function buildSeedItems() {
       ],
       related_collection: "goals",
       related_doc_id: null,
+      goal_title: "Achieve Product-Market Fit \u2014 5 paying clients on managed platform by June 30, 2026",
       status: "pending",
     },
     {
@@ -129,6 +133,7 @@ function buildSeedItems() {
       options: [],
       related_collection: null,
       related_doc_id: null,
+      goal_title: "Complete Nouvia OS \u2014 fully operational AI delivery system by April 30, 2026",
       status: "pending",
     },
   ];
@@ -141,7 +146,8 @@ export default function useGovernanceQueue() {
   useEffect(() => {
     (async () => {
       let data = await getData(STORAGE_KEY);
-      if (!data || !Array.isArray(data) || data.length === 0) {
+      // Reseed if data is missing goal_title (Phase 6 design audit upgrade)
+      if (!data || !Array.isArray(data) || data.length === 0 || (data[0] && !data[0].goal_title)) {
         data = buildSeedItems();
         await setData(STORAGE_KEY, data);
       }

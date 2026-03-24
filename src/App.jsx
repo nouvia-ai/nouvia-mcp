@@ -115,7 +115,13 @@ function Btn({ children, primary, onClick, small, className = "" }) {
 
 // ─── NIP SECTIONS ───────────────────────────────
 const NIP_SECTIONS = [
-  { id: "dashboard", label: "Dashboard", icon: "◈", subTabs: [] },
+  {
+    id: "cockpit", label: "Management Cockpit", icon: "◈",
+    subTabs: [
+      { id: "governance", label: "Governance Queue", icon: "▸" },
+      { id: "overview",   label: "Cockpit",          icon: "◈" },
+    ],
+  },
   {
     id: "bsp", label: "BSP", icon: "▣",
     subTabs: [
@@ -772,8 +778,8 @@ function Dashboard({ clients, experiments, decisions, trends, canvas, coworkers,
 
 // ─── MAIN APP ───────────────────────────────────
 export default function App() {
-  const [section, setSection] = useState("dashboard");
-  const [subTab, setSubTab]   = useState(null);
+  const [section, setSection] = useState("cockpit");
+  const [subTab, setSubTab]   = useState("governance");
   const [loading, setLoading] = useState(true);
   const [theme, setTheme] = useState(() => localStorage.getItem("strategist:theme") || "dark");
   const track = useTrackerEvents();
@@ -818,11 +824,11 @@ export default function App() {
 
   // Legacy setTab bridge for components that call setTab('goals') etc.
   const setTab = (tabId) => {
-    if (tabId === 'goals') { setSection('dashboard'); setSubTab('goals'); return; }
+    if (tabId === 'goals') { setSection('cockpit'); setSubTab('goals'); return; }
     if (tabId === 'experiments') { setSection('bsp'); setSubTab('experiments'); return; }
     if (tabId === 'coworkers') { setSection('os'); setSubTab('coworkers'); return; }
-    // Default: navigate to dashboard
-    setSection('dashboard'); setSubTab(null);
+    // Default: navigate to cockpit overview
+    setSection('cockpit'); setSubTab('overview');
   };
 
   // Derive active tab for content rendering
@@ -881,10 +887,17 @@ export default function App() {
     </div>
   );
 
-  // Inject governance count into Dashboard section label
+  // Inject governance count into Governance Queue sub-tab label
   const sectionsWithBadge = NIP_SECTIONS.map(s =>
-    s.id === "dashboard" && govData.pendingCount > 0
-      ? { ...s, label: `Dashboard (${govData.pendingCount})` }
+    s.id === "cockpit" && govData.pendingCount > 0
+      ? {
+          ...s,
+          subTabs: s.subTabs.map(st =>
+            st.id === "governance"
+              ? { ...st, label: `Governance Queue (${govData.pendingCount})` }
+              : st
+          ),
+        }
       : s
   );
 
@@ -903,8 +916,23 @@ export default function App() {
   return (
     <div data-theme={theme}>
       <AppShell nav={nav} wideContent={activeView === "canvas"}>
-        {/* Dashboard */}
-        {activeView === "dashboard" && !nasDetailClient && !riskDetailItem && !channelDetailItem && !channelAdding && !govDetailItem && <DashboardTab clients={clients} experiments={experiments} canvas={canvas} coworkers={coworkers} skills={skills} connectors={connectors} setTab={setTab} nasProps={{
+        {/* Management Cockpit — Governance Queue sub-tab */}
+        {activeView === "governance" && !govDetailItem && <DashboardTab mode="governance" setTab={setTab} governanceProps={{
+          pendingItems: govData.pendingItems,
+          resolvedItems: govData.resolvedItems,
+          onResolve: govData.resolveItem,
+          onExpand: (item) => setGovDetailItem(item),
+        }} />}
+        {activeView === "governance" && govDetailItem && (
+          <GovernanceDetail
+            item={govDetailItem}
+            onResolve={async (id, status, notes, opt) => { await govData.resolveItem(id, status, notes, opt); setGovDetailItem(null); }}
+            onBack={() => setGovDetailItem(null)}
+          />
+        )}
+
+        {/* Management Cockpit — Cockpit (overview) sub-tab */}
+        {activeView === "overview" && !nasDetailClient && !riskDetailItem && !channelDetailItem && !channelAdding && <DashboardTab mode="overview" clients={clients} experiments={experiments} canvas={canvas} coworkers={coworkers} skills={skills} connectors={connectors} setTab={setTab} nasProps={{
           scores: nas.scores, configs: nas.configs, aggregateNAS: nas.aggregateNAS,
           loading: nas.loading, updateScore: nas.updateScore, getConfig: nas.getConfig,
           onNavigateToDetail: (score) => setNasDetailClient(score),
@@ -917,20 +945,8 @@ export default function App() {
           loading: channelData.loading,
           canvasLastModified: channelData.canvasLastModified,
           onSelectChannel: (ch) => setChannelDetailItem(ch),
-        }} governanceProps={{
-          pendingItems: govData.pendingItems,
-          resolvedItems: govData.resolvedItems,
-          onResolve: govData.resolveItem,
-          onExpand: (item) => setGovDetailItem(item),
         }} />}
-        {activeView === "dashboard" && govDetailItem && (
-          <GovernanceDetail
-            item={govDetailItem}
-            onResolve={async (id, status, notes, opt) => { await govData.resolveItem(id, status, notes, opt); setGovDetailItem(null); }}
-            onBack={() => setGovDetailItem(null)}
-          />
-        )}
-        {activeView === "dashboard" && nasDetailClient && !nasEditing && (
+        {activeView === "overview" && nasDetailClient && !nasEditing && (
           <NASDetail
             score={nasDetailClient}
             config={nas.getConfig(nasDetailClient.client_id)}
@@ -938,7 +954,7 @@ export default function App() {
             onEdit={() => setNasEditing(true)}
           />
         )}
-        {activeView === "dashboard" && nasDetailClient && nasEditing && (
+        {activeView === "overview" && nasDetailClient && nasEditing && (
           <NASEditForm
             score={nasDetailClient}
             onSave={async (updates) => {
@@ -949,14 +965,14 @@ export default function App() {
             onCancel={() => setNasEditing(false)}
           />
         )}
-        {activeView === "dashboard" && riskDetailItem && !riskEditing && (
+        {activeView === "overview" && riskDetailItem && !riskEditing && (
           <RiskDetail
             risk={riskDetailItem}
             onBack={() => setRiskDetailItem(null)}
             onUpdate={() => setRiskEditing(true)}
           />
         )}
-        {activeView === "dashboard" && riskDetailItem && riskEditing && (
+        {activeView === "overview" && riskDetailItem && riskEditing && (
           <RiskEditForm
             risk={riskDetailItem}
             onSave={async (updates) => {
@@ -967,7 +983,7 @@ export default function App() {
             onCancel={() => setRiskEditing(false)}
           />
         )}
-        {activeView === "dashboard" && channelDetailItem && !channelEditing && (
+        {activeView === "overview" && channelDetailItem && !channelEditing && (
           <ChannelDetail
             channel={channelDetailItem}
             canvasLastModified={channelData.canvasLastModified}
@@ -979,7 +995,7 @@ export default function App() {
             }}
           />
         )}
-        {activeView === "dashboard" && channelDetailItem && channelEditing && (
+        {activeView === "overview" && channelDetailItem && channelEditing && (
           <ChannelEditForm
             channel={channelDetailItem}
             onSave={async (updates) => {
@@ -990,7 +1006,7 @@ export default function App() {
             onCancel={() => setChannelEditing(false)}
           />
         )}
-        {activeView === "dashboard" && channelAdding && (
+        {activeView === "overview" && channelAdding && (
           <ChannelEditForm
             onSave={async (data) => {
               await channelData.addChannel(data);
@@ -1017,7 +1033,7 @@ export default function App() {
         {activeView === "ip_library"  && <IPLibraryTab />}
 
         {/* Goals (accessed from Dashboard) */}
-        {activeView === "goals"       && <GoalManagement onBack={() => handleNavigate("dashboard", null)} />}
+        {activeView === "goals"       && <GoalManagement onBack={() => handleNavigate("cockpit", "overview")} />}
       </AppShell>
     </div>
   );

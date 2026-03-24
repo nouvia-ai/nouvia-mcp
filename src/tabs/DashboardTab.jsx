@@ -1,7 +1,8 @@
 /**
- * DashboardTab — NIP Phase 1
- * Landing page: Goals, Financial Summary, Governance Queue, Risk Signals, Adoption Score
- * Plus existing BUILD and LEARN sections from the cockpit.
+ * DashboardTab — NIP Phase 6 + Design Audit
+ * Two modes:
+ *   mode="governance" — Governance Queue (Ben's Inbox, action-focused)
+ *   mode="overview"   — Cockpit (read-only intelligence overview)
  */
 import NorthStarGoal      from '../components/Cockpit/MeasureSection/NorthStarGoal';
 import FinancialMetrics   from '../components/Cockpit/MeasureSection/FinancialMetrics';
@@ -17,24 +18,37 @@ import { RiskSignalsSection } from '../components/Risk/RiskWidget';
 import { ChannelsSection } from '../components/Channels/ChannelsWidget';
 import { GovernanceSection } from '../components/Governance/GovernanceWidget';
 
-/* ── Layout tokens ──────────────────────────────── */
-const SECTION_GAP  = 'var(--space-6)';
-const WIDGET_GAP   = 'var(--space-4)';
-const COL_GAP      = 'var(--space-3)';
+/* ── Design tokens (Nouvia Design Standard) ──── */
+const SECTION_GAP  = 'var(--space-8)';   /* 32px between sections */
+const WIDGET_GAP   = 'var(--space-4)';   /* 16px between cards */
+const COL_GAP      = 'var(--space-4)';   /* 16px between columns */
 
-/* ── Section header ────────────────────────────── */
+/* ── Section header — Headline role (20-22px) ── */
 function SectionHeader({ label, sub }) {
   return (
     <div style={{ marginBottom: 'var(--space-4)' }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-        <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', fontFamily: 'var(--font-sans)' }}>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 'var(--space-2)' }}>
+        <h3 style={{
+          margin: 0,
+          fontSize: 'var(--font-size-xl)',
+          fontWeight: 'var(--font-weight-semibold)',
+          color: 'var(--color-text-primary)',
+          fontFamily: 'var(--font-sans)',
+          letterSpacing: 'var(--letter-spacing-tight)',
+        }}>
           {label}
         </h3>
-        <span style={{ fontSize: 13, color: 'var(--color-text-ghost)', fontFamily: 'var(--font-sans)', fontStyle: 'italic' }}>
-          {sub}
-        </span>
+        {sub && (
+          <span style={{
+            fontSize: 'var(--font-size-sm)',
+            color: 'var(--color-text-muted)',
+            fontFamily: 'var(--font-sans)',
+          }}>
+            {sub}
+          </span>
+        )}
       </div>
-      <div style={{ height: 1, backgroundColor: 'var(--color-border-default)', marginTop: 8 }} />
+      <div style={{ height: 1, backgroundColor: 'var(--color-border-default)', marginTop: 'var(--space-2)' }} />
     </div>
   );
 }
@@ -48,6 +62,23 @@ function WidgetCard({ children, flex }) {
   );
 }
 
+/* ── Widget label — Label role (12-13px) ──────── */
+function WidgetLabel({ children }) {
+  return (
+    <div style={{
+      fontSize: 'var(--font-size-xs)',
+      fontWeight: 'var(--font-weight-semibold)',
+      color: 'var(--color-text-muted)',
+      textTransform: 'uppercase',
+      letterSpacing: 'var(--letter-spacing-wider)',
+      marginBottom: 'var(--space-2)',
+      fontFamily: 'var(--font-sans)',
+    }}>
+      {children}
+    </div>
+  );
+}
+
 /* ── Placeholder card ──────────────────────────── */
 function PlaceholderCard({ icon, title, subtitle }) {
   return (
@@ -56,8 +87,8 @@ function PlaceholderCard({ icon, title, subtitle }) {
       flexDirection: 'column',
       alignItems: 'center',
       justifyContent: 'center',
-      padding: 'var(--space-6) var(--space-4)',
-      borderRadius: 'var(--radius-lg)',
+      padding: 'var(--space-6)',
+      borderRadius: 'var(--radius-md)',
       border: '1px dashed var(--color-border-muted)',
       backgroundColor: 'var(--color-bg-overlay)',
       flex: 1,
@@ -69,7 +100,7 @@ function PlaceholderCard({ icon, title, subtitle }) {
         fontWeight: 'var(--font-weight-medium)',
         color: 'var(--color-text-muted)',
         margin: 0,
-        marginBottom: 4,
+        marginBottom: 'var(--space-1)',
       }}>
         {title}
       </p>
@@ -84,30 +115,35 @@ function PlaceholderCard({ icon, title, subtitle }) {
   );
 }
 
-export default function DashboardTab({ setTab, nasProps, riskProps, channelsProps, governanceProps }) {
-  const handleGoToGoals      = () => setTab?.('goals');
+/* ══════════════════════════════════════════════════
+   GOVERNANCE MODE — Ben's Inbox
+   ═══════════════════════════════════════════════ */
+function GovernanceView({ governanceProps }) {
+  return (
+    <div style={{ fontFamily: 'var(--font-sans)' }}>
+      <GovernanceSection {...governanceProps} />
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════
+   COCKPIT (OVERVIEW) MODE — Read-only intelligence
+   ═══════════════════════════════════════════════ */
+function CockpitView({ setTab, nasProps, riskProps, channelsProps }) {
+  const handleGoToGoals       = () => setTab?.('goals');
   const handleGoToExperiments = () => setTab?.('experiments');
 
   return (
-    <div style={{ fontFamily: 'var(--font-sans)', minWidth: 1280 }}>
-
-      {/* ══════════ GOVERNANCE QUEUE ══════════ */}
-      {governanceProps && (
-        <div style={{ marginBottom: SECTION_GAP }}>
-          <GovernanceSection {...governanceProps} />
-        </div>
-      )}
+    <div style={{ fontFamily: 'var(--font-sans)' }}>
 
       {/* ══════════ MEASURE ══════════ */}
       <div style={{ marginBottom: SECTION_GAP }}>
-        <SectionHeader label="MEASURE" sub="Are we on track?" />
+        <SectionHeader label="Measure" sub="Are we on track?" />
 
-        {/* North Star Goal — full width */}
         <div style={{ marginBottom: WIDGET_GAP }}>
           <NorthStarGoal onAddGoal={handleGoToGoals} />
         </div>
 
-        {/* Financial Metrics — 4-card row */}
         <div style={{ marginBottom: WIDGET_GAP }}>
           <FinancialMetrics />
         </div>
@@ -120,53 +156,44 @@ export default function DashboardTab({ setTab, nasProps, riskProps, channelsProp
 
       {/* ══════════ INTELLIGENCE ══════════ */}
       <div style={{ marginBottom: SECTION_GAP }}>
-        <SectionHeader label="INTELLIGENCE" sub="Signals & scoring" />
+        <SectionHeader label="Intelligence" sub="Signals & scoring" />
 
         <div style={{ display: 'flex', gap: COL_GAP, alignItems: 'stretch' }}>
           {channelsProps ? (
             <ChannelsSection {...channelsProps} />
           ) : (
-            <PlaceholderCard icon="\u{1F4E1}" title="Channels" subtitle="Loading channels..." />
+            <PlaceholderCard icon={"\ud83d\udce1"} title="Channels" subtitle="Loading channels..." />
           )}
           {riskProps ? (
             <RiskSignalsSection {...riskProps} />
           ) : (
-            <PlaceholderCard
-              icon="⚡"
-              title="Risk Signals"
-              subtitle="Loading risk data..."
-            />
+            <PlaceholderCard icon={"\u26a1"} title="Risk Signals" subtitle="Loading risk data..." />
           )}
           {nasProps ? (
             <NASSection {...nasProps} />
           ) : (
-            <PlaceholderCard
-              icon="📈"
-              title="Nouvia Adoption Score"
-              subtitle="Loading adoption data..."
-            />
+            <PlaceholderCard icon={"\ud83d\udcc8"} title="Nouvia Adoption Score" subtitle="Loading adoption data..." />
           )}
         </div>
       </div>
 
       {/* ══════════ BUILD ══════════ */}
       <div style={{ marginBottom: SECTION_GAP }}>
-        <SectionHeader label="BUILD" sub="What do I do today?" />
+        <SectionHeader label="Build" sub="What do I do today?" />
 
-        {/* OKR + Priority + Todos: 3-col layout */}
         <div style={{ display: 'flex', gap: COL_GAP, alignItems: 'flex-start' }}>
           <WidgetCard flex="1.2">
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-ghost)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, fontFamily: 'var(--font-sans)' }}>OKR Progress</div>
+            <WidgetLabel>OKR Progress</WidgetLabel>
             <OKRProgress />
           </WidgetCard>
 
           <WidgetCard flex="1.5">
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-ghost)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, fontFamily: 'var(--font-sans)' }}>Top Priorities</div>
+            <WidgetLabel>Top Priorities</WidgetLabel>
             <PrioritySequence onNavigate={() => setTab?.('coworkers')} />
           </WidgetCard>
 
           <WidgetCard flex="1.2">
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-ghost)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, fontFamily: 'var(--font-sans)' }}>This Week</div>
+            <WidgetLabel>This Week</WidgetLabel>
             <WeeklyTodos />
           </WidgetCard>
         </div>
@@ -174,27 +201,43 @@ export default function DashboardTab({ setTab, nasProps, riskProps, channelsProp
 
       {/* ══════════ LEARN ══════════ */}
       <div style={{ marginBottom: SECTION_GAP }}>
-        <SectionHeader label="LEARN" sub="What did we just learn?" />
+        <SectionHeader label="Learn" sub="What did we just learn?" />
 
-        {/* Flywheel (full-width, only when present) */}
         <div style={{ marginBottom: WIDGET_GAP }}>
           <FlywheelConnection />
         </div>
 
-        {/* Key Findings + Experiment Summary: 2-col layout */}
         <div style={{ display: 'flex', gap: COL_GAP, alignItems: 'flex-start' }}>
           <WidgetCard flex="1.2">
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-ghost)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, fontFamily: 'var(--font-sans)' }}>Key Findings</div>
+            <WidgetLabel>Key Findings</WidgetLabel>
             <KeyFindings />
           </WidgetCard>
 
           <WidgetCard flex="1">
-            <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-ghost)', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 8, fontFamily: 'var(--font-sans)' }}>Experiments</div>
+            <WidgetLabel>Experiments</WidgetLabel>
             <ExperimentSummary onNavigate={handleGoToExperiments} />
           </WidgetCard>
         </div>
       </div>
 
     </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════
+   MAIN EXPORT — routes to correct view by mode
+   ═══════════════════════════════════════════════ */
+export default function DashboardTab({ mode = "overview", setTab, nasProps, riskProps, channelsProps, governanceProps }) {
+  if (mode === "governance") {
+    return <GovernanceView governanceProps={governanceProps} />;
+  }
+
+  return (
+    <CockpitView
+      setTab={setTab}
+      nasProps={nasProps}
+      riskProps={riskProps}
+      channelsProps={channelsProps}
+    />
   );
 }
