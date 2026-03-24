@@ -1,0 +1,21 @@
+{
+  "name": "bsp-loop-runner",
+  "version": "1.0.0",
+  "description": "Autonomous intelligence loops for the Nouvia Business Strategy Platform",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "weekly": "LOOP_TYPE=weekly node src/index.js",
+    "monthly": "LOOP_TYPE=monthly node src/index.js",
+    "test:weekly": "LOOP_TYPE=weekly DRY_RUN=true node src/index.js",
+    "test:monthly": "LOOP_TYPE=monthly DRY_RUN=true node src/index.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.80.0",
+    "googleapis": "^144.0.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
