@@ -13,14 +13,15 @@ const uuid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,
 /* ── Constants ───────────────────────────────── */
 export const COMPETITOR_TYPES = ["Direct", "Adjacent", "Emerging"];
 export const THREAT_LEVELS = ["High", "Medium", "Low"];
-export const CATEGORIES = ["Boutique AI Agency", "Vertical SaaS", "Big 4 / Enterprise", "DIY / In-House"];
+export const CATEGORIES = ["Scaled AI Services", "Boutique AI Agency", "Vertical SaaS", "Big 4 / Enterprise", "DIY / In-House"];
 export const CATEGORY_COLORS = {
-  "Boutique AI Agency": "#f97316",  // orange
-  "Vertical SaaS": "#a855f7",       // purple
-  "Big 4 / Enterprise": "#71717a",  // grey
-  "DIY / In-House": "#ef4444",      // red
+  "Scaled AI Services": "#e11d48",   // rose — high visibility for top threat
+  "Boutique AI Agency": "#f97316",   // orange
+  "Vertical SaaS": "#a855f7",        // purple
+  "Big 4 / Enterprise": "#71717a",   // grey
+  "DIY / In-House": "#ef4444",       // red
 };
-export const CATEGORY_ORDER = ["Boutique AI Agency", "Vertical SaaS", "Big 4 / Enterprise", "DIY / In-House"];
+export const CATEGORY_ORDER = ["Scaled AI Services", "Boutique AI Agency", "Vertical SaaS", "Big 4 / Enterprise", "DIY / In-House"];
 
 export const COMPARISON_DIMENSIONS = [
   { id: "pricing", label: "Pricing Model" },
@@ -90,6 +91,21 @@ function buildSeedData() {
       website: "https://nouvia.ai",
       notes: "",
       matrix_positions: { market_position: { x: 25, y: 85 } },
+      created_at: now, updated_at: now,
+    },
+    // ── Scaled AI Services ──
+    {
+      id: uuid(),
+      name: "Vooban",
+      type: "Direct",
+      category: "Scaled AI Services",
+      description: "Quebec's leader in applied AI \u2014 custom solutions integrating AI, data, and IoT since 2011. CDPQ-backed, 135+ employees, Quebec City HQ + Montreal office.",
+      threat_level: "High",
+      key_differentiator: "CDPQ funding, Scale AI Company of the Year, 135 employees, 12+ year track record, manufacturing domain experience (GUAY, Patates Dolbec), agentic AI division launched 2025",
+      weakness: "Project delivery model \u2014 build and hand off. No adoption guarantee or methodology. No Sentinel-style platform monitoring. No NAS-style adoption scoring. No ongoing managed services model visible. Too large to give IVC-sized clients deep attention. Revenue depends on headcount scaling \u2014 not platform leverage.",
+      website: "https://vooban.com",
+      notes: "The most important competitor to track. They have everything Nouvia lacks (scale, funding, brand) but lack everything Nouvia has (adoption methodology, platform monitoring, managed ongoing partnership). The strategic question: would an IVC-sized client choose Vooban over Nouvia? Probably not \u2014 Vooban's 135-person team is optimized for larger engagements. But if Vooban builds a downmarket offering or acquires a smaller firm in Nouvia's space, the competitive dynamic shifts.",
+      matrix_positions: { market_position: { x: 50, y: 40 } },
       created_at: now, updated_at: now,
     },
     // ── Boutique AI Agencies (Montr\u00e9al \u2014 Direct) ──
@@ -235,6 +251,19 @@ function buildSeedData() {
   // Seed known comparisons by finding competitors by name
   const byName = (n) => competitors.find(c => c.name === n);
 
+  // Vooban — top competitor
+  const vooban = byName("Vooban");
+  if (vooban) {
+    matrix[vooban.id].pricing = { status: "parity", notes: "Both project-based. Vooban is larger scale, higher minimum engagement." };
+    matrix[vooban.id].delivery = { status: "advantage", notes: "Nouvia: AI-augmented solo, weeks. Vooban: 135-person teams, months." };
+    matrix[vooban.id].self_evolving = { status: "advantage", notes: "Nouvia OS is unique. Vooban has no self-evolving platform." };
+    matrix[vooban.id].adoption_guarantee = { status: "advantage", notes: "Unique to Nouvia. Vooban is build-and-handoff." };
+    matrix[vooban.id].platform_ip = { status: "advantage", notes: "Nouvia OS accumulates IP. Vooban scales via headcount." };
+    matrix[vooban.id].client_size = { status: "disadvantage", notes: "Vooban handles mid-to-enterprise. Too large for SMB attention." };
+    matrix[vooban.id].vertical = { status: "parity", notes: "Both serve manufacturing. Vooban also does IoT, cybersecurity." };
+    matrix[vooban.id].ai_depth = { status: "parity", notes: "Both deep AI. Vooban has agentic AI division launched 2025." };
+  }
+
   // IA Expert — closest competitor
   const iaExpert = byName("IA Expert Consulting");
   if (iaExpert) {
@@ -319,7 +348,8 @@ export function useCompetitiveLandscape() {
       const needsReseed = !data || !data.competitors || data.competitors.length === 0
         || !data.competitors.find(c => c.is_self)
         || !data.competitors.find(c => c.name === "Moov AI")
-        || !data.competitors.some(c => c.category);
+        || !data.competitors.some(c => c.category)
+        || !data.competitors.find(c => c.name === "Vooban");
       if (needsReseed) {
         const seed = buildSeedData();
         await setData(STORAGE_KEY, seed);
