@@ -13,6 +13,14 @@ const uuid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,
 /* ── Constants ───────────────────────────────── */
 export const COMPETITOR_TYPES = ["Direct", "Adjacent", "Emerging"];
 export const THREAT_LEVELS = ["High", "Medium", "Low"];
+export const CATEGORIES = ["Boutique AI Agency", "Vertical SaaS", "Big 4 / Enterprise", "DIY / In-House"];
+export const CATEGORY_COLORS = {
+  "Boutique AI Agency": "#f97316",  // orange
+  "Vertical SaaS": "#a855f7",       // purple
+  "Big 4 / Enterprise": "#71717a",  // grey
+  "DIY / In-House": "#ef4444",      // red
+};
+export const CATEGORY_ORDER = ["Boutique AI Agency", "Vertical SaaS", "Big 4 / Enterprise", "DIY / In-House"];
 
 export const COMPARISON_DIMENSIONS = [
   { id: "pricing", label: "Pricing Model" },
@@ -74,6 +82,7 @@ function buildSeedData() {
       name: "Nouvia",
       type: "Direct",
       is_self: true,
+      category: null,
       description: "AI-native delivery consultancy with self-evolving platform (Nouvia OS). Solo AI-augmented delivery, outcome-based pricing, adoption guarantee.",
       threat_level: null,
       key_differentiator: "Self-evolving delivery system, AI coworker chain, adoption guarantee, reusable Core Components",
@@ -88,6 +97,7 @@ function buildSeedData() {
       id: uuid(),
       name: "Moov AI",
       type: "Direct",
+      category: "Boutique AI Agency",
       description: "Applied AI and data solutions that drive real business outcomes. Montr\u00e9al-based, 358 Beaubien.",
       threat_level: "Medium",
       key_differentiator: "Applied AI focus, local Montr\u00e9al presence, established brand",
@@ -101,6 +111,7 @@ function buildSeedData() {
       id: uuid(),
       name: "IA Expert Consulting",
       type: "Direct",
+      category: "Boutique AI Agency",
       description: "Embedded AI consultants who work directly within your teams. Montr\u00e9al-based. 6-month embedded engagements.",
       threat_level: "High",
       key_differentiator: "Embedded model, worked with construction/estimating client (Balcon Expert)",
@@ -114,6 +125,7 @@ function buildSeedData() {
       id: uuid(),
       name: "AIMpact Consult",
       type: "Direct",
+      category: "Boutique AI Agency",
       description: "Where technology meets humanity \u2014 Microsoft Copilot and AI implementation.",
       threat_level: "Low",
       key_differentiator: "Microsoft-centric (Copilot, M365), established ecosystem",
@@ -128,6 +140,7 @@ function buildSeedData() {
       id: uuid(),
       name: "Togal.AI",
       type: "Adjacent",
+      category: "Vertical SaaS",
       description: "AI-powered automated takeoffs for commercial construction. $299/user/month.",
       threat_level: "Medium",
       key_differentiator: "Specialized takeoff tool, fast, established product",
@@ -141,6 +154,7 @@ function buildSeedData() {
       id: uuid(),
       name: "Beam AI (Attentive.ai)",
       type: "Adjacent",
+      category: "Vertical SaaS",
       description: "AI takeoff software for construction and field services \u2014 claims 98% accuracy. Automated from aerial imagery and PDFs.",
       threat_level: "Medium",
       key_differentiator: "98% takeoff accuracy claim, mature product for standard construction",
@@ -154,6 +168,7 @@ function buildSeedData() {
       id: uuid(),
       name: "Kreo",
       type: "Adjacent",
+      category: "Vertical SaaS",
       description: "AI takeoff and estimating \u2014 automate measurements, eliminate errors, bid 10x faster. Cloud-based, 2D/3D support.",
       threat_level: "Low",
       key_differentiator: "Cloud-based 2D/3D support, generic construction estimating",
@@ -168,6 +183,7 @@ function buildSeedData() {
       id: uuid(),
       name: "CGI",
       type: "Adjacent",
+      category: "Big 4 / Enterprise",
       description: "Enterprise-grade IT solutions, cybersecurity, digital transformation. Montr\u00e9al-headquartered global firm.",
       threat_level: "Low",
       key_differentiator: "Montr\u00e9al HQ, global scale, enterprise relationships, government contracts",
@@ -181,6 +197,7 @@ function buildSeedData() {
       id: uuid(),
       name: "KPMG Canada AI",
       type: "Adjacent",
+      category: "Big 4 / Enterprise",
       description: "Enterprise AI strategy, governance, and implementation. Compliance and governance focus.",
       threat_level: "Low",
       key_differentiator: "Brand trust, compliance frameworks, enterprise relationships",
@@ -194,6 +211,7 @@ function buildSeedData() {
       id: uuid(),
       name: "Gestisoft",
       type: "Adjacent",
+      category: "Big 4 / Enterprise",
       description: "Microsoft Copilot and Dynamics 365 AI consulting. 25+ years in CRM/ERP consulting.",
       threat_level: "Low",
       key_differentiator: "Microsoft-certified, 25+ years CRM/ERP, public sector experience",
@@ -300,7 +318,8 @@ export function useCompetitiveLandscape() {
       // Reseed if missing real competitors (v2 upgrade) or Nouvia self-entry
       const needsReseed = !data || !data.competitors || data.competitors.length === 0
         || !data.competitors.find(c => c.is_self)
-        || !data.competitors.find(c => c.name === "Moov AI");
+        || !data.competitors.find(c => c.name === "Moov AI")
+        || !data.competitors.some(c => c.category);
       if (needsReseed) {
         const seed = buildSeedData();
         await setData(STORAGE_KEY, seed);

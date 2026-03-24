@@ -11,6 +11,9 @@ import {
   COMPARISON_DIMENSIONS,
   COMPARISON_STATUS,
   MATRIX_CONFIGS,
+  CATEGORY_COLORS,
+  CATEGORY_ORDER,
+  CATEGORIES,
 } from "../hooks/useCompetitiveLandscape";
 
 /* ── Design tokens ───────────────────────────── */
@@ -89,8 +92,7 @@ function CBMMap({ competitors, activeMatrixId, onUpdatePosition, onSelectCompeti
 
   const getBubbleColor = (c) => {
     if (c.is_self) return "#0A84FF";
-    if (c.threat_level === "High") return "var(--color-error)";
-    if (c.threat_level === "Medium") return "var(--color-warning)";
+    if (c.category && CATEGORY_COLORS[c.category]) return CATEGORY_COLORS[c.category];
     return "var(--color-text-subtle)";
   };
 
@@ -187,6 +189,18 @@ function CBMMap({ competitors, activeMatrixId, onUpdatePosition, onSelectCompeti
           );
         })}
       </svg>
+
+      {/* Legend */}
+      <div style={{ display: "flex", gap: "var(--space-4)", justifyContent: "center", marginTop: "var(--space-2)", flexWrap: "wrap" }}>
+        <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: "var(--font-size-xs)", color: "var(--color-text-muted)" }}>
+          <span style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: "#0A84FF", display: "inline-block" }} /> Nouvia
+        </span>
+        {CATEGORY_ORDER.map(cat => (
+          <span key={cat} style={{ display: "flex", alignItems: "center", gap: 4, fontSize: "var(--font-size-xs)", color: "var(--color-text-muted)" }}>
+            <span style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: CATEGORY_COLORS[cat], display: "inline-block" }} /> {cat}
+          </span>
+        ))}
+      </div>
 
       {/* Tooltip */}
       {tooltip && (
@@ -368,6 +382,15 @@ function RegistryView({ competitors, onAdd, onEdit, onDelete }) {
   if (adding) return <CompetitorForm onSave={async (data) => { await onAdd(data); setAdding(false); }} onCancel={() => setAdding(false)} />;
   if (editing) return <CompetitorForm competitor={editing} onSave={async (data) => { await onEdit(editing.id, data); setEditing(null); }} onCancel={() => setEditing(null)} />;
 
+  // Group by category
+  const grouped = {};
+  CATEGORY_ORDER.forEach(cat => { grouped[cat] = []; });
+  grouped["Other"] = [];
+  competitors.forEach(c => {
+    const cat = c.category && grouped[c.category] ? c.category : "Other";
+    grouped[cat].push(c);
+  });
+
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 'var(--space-4)' }}>
@@ -377,7 +400,21 @@ function RegistryView({ competitors, onAdd, onEdit, onDelete }) {
         <button style={btnPrimary} onClick={() => setAdding(true)}>+ Add Competitor</button>
       </div>
 
-      {competitors.map(c => {
+      {Object.entries(grouped).filter(([, comps]) => comps.length > 0).map(([category, comps]) => (
+        <div key={category} style={{ marginBottom: 'var(--space-6)' }}>
+          {/* Category header */}
+          <div style={{ display: "flex", alignItems: "center", gap: 'var(--space-2)', marginBottom: 'var(--space-3)' }}>
+            <span style={{ width: 10, height: 10, borderRadius: '50%', backgroundColor: CATEGORY_COLORS[category] || 'var(--color-text-subtle)', flexShrink: 0 }} />
+            <span style={{
+              fontSize: 'var(--font-size-xs)', fontWeight: 'var(--font-weight-semibold)',
+              color: 'var(--color-text-muted)', textTransform: 'uppercase',
+              letterSpacing: 'var(--letter-spacing-wider)', fontFamily: 'var(--font-sans)',
+            }}>{category}</span>
+            <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-text-subtle)' }}>({comps.length})</span>
+            <div style={{ flex: 1, height: 1, backgroundColor: 'var(--color-border-default)' }} />
+          </div>
+
+      {comps.map(c => {
         const tb = THREAT_BADGE[c.threat_level] || THREAT_BADGE.Medium;
         const typb = TYPE_BADGE[c.type] || TYPE_BADGE.Direct;
         const isExpanded = expanded === c.id;
@@ -427,6 +464,8 @@ function RegistryView({ competitors, onAdd, onEdit, onDelete }) {
           </div>
         );
       })}
+        </div>
+      ))}
     </div>
   );
 }
