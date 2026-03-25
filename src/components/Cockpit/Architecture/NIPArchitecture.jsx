@@ -9,16 +9,29 @@ const SC = {
 }
 function Badge({ status, small }) {
   const s = SC[status] || SC.planned
+  const pulseStyle = status === 'building'
+    ? { animation: 'pulseBuilding 2s ease-in-out infinite' }
+    : {}
   return (
-    <span className={`${s.bg} ${s.text} font-medium rounded
-      ${small ? 'text-[10px] px-1.5 py-0.5' : 'text-xs px-2 py-0.5'}`}>
+    <span
+      className={`${s.bg} ${s.text} font-medium rounded
+        ${small ? 'text-[10px] px-1.5 py-0.5' : 'text-xs px-2 py-0.5'}`}
+      style={pulseStyle}
+    >
       {s.label}
     </span>
   )
 }
 function Dot({ status }) {
   const s = SC[status] || SC.planned
-  return <span className={`inline-block w-2 h-2 rounded-full flex-shrink-0 mt-1.5 ${s.dot}`}/>
+  return (
+    <span className={`inline-block w-2 h-2 rounded-full
+      flex-shrink-0 mt-1.5 ${s.dot}`}
+      style={status === 'building' ? {
+        animation: 'pulseBuilding 2s ease-in-out infinite'
+      } : {}}
+    />
+  )
 }
 function Card({ children, className = '' }) {
   return (
@@ -723,6 +736,13 @@ Respond ONLY with valid JSON, no markdown:
     { id:'infra',    label:'Infrastructure' },
   ]
   return (
+    <>
+    <style>{`
+      @keyframes pulseBuilding {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.35; }
+      }
+    `}</style>
     <div className="p-6 space-y-5 max-w-5xl">
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
@@ -795,13 +815,26 @@ Respond ONLY with valid JSON, no markdown:
         </div>
       </div>
       {/* Legend */}
-      <div className="flex flex-wrap gap-2">
-        {Object.entries(SC).map(([key, s]) => (
-          <span key={key}
-            className={`${s.bg} ${s.text} text-xs px-2 py-1 rounded font-medium`}>
-            {s.label}
-          </span>
-        ))}
+      <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Status legend</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+          {[
+            { status: 'live', dot: 'bg-green-500', badge: 'bg-green-100 text-green-700', label: '● Live', title: 'Built and working', desc: 'Deployed to production. Running today.' },
+            { status: 'building', dot: 'bg-amber-400', badge: 'bg-amber-100 text-amber-700', label: '◐ Building', title: 'Actively in progress', desc: 'Current sprint. Dots pulse to show active work.', pulse: true },
+            { status: 'planned', dot: 'bg-blue-400', badge: 'bg-blue-100 text-blue-600', label: '○ Planned', title: 'On the roadmap', desc: 'Scoped and sequenced. Starts after current sprint.' },
+            { status: 'agentic', dot: 'bg-purple-400', badge: 'bg-purple-100 text-purple-700', label: '◇ Agentic', title: 'Future destination', desc: 'Phase 4+ autonomous vision. Blueprint → Forge loop.' },
+          ].map((item, i) => (
+            <div key={i} className="bg-white border border-gray-200 rounded-lg p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <span className={`inline-block w-2.5 h-2.5 rounded-full flex-shrink-0 ${item.dot}`}
+                  style={item.pulse ? { animation: 'pulseBuilding 2s ease-in-out infinite' } : {}} />
+                <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${item.badge}`}>{item.label}</span>
+              </div>
+              <p className="text-xs font-medium text-gray-800 mb-0.5">{item.title}</p>
+              <p className="text-[11px] text-gray-400 leading-relaxed">{item.desc}</p>
+            </div>
+          ))}
+        </div>
       </div>
       {/* Tabs */}
       <div className="border-b border-gray-200 flex gap-0 overflow-x-auto">
@@ -829,5 +862,6 @@ Respond ONLY with valid JSON, no markdown:
         {activeTab === 'infra'     && <InfraTab     status={status} />}
       </div>
     </div>
+    </>
   )
 }
