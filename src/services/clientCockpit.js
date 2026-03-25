@@ -168,6 +168,38 @@ export async function updateBacklogTargetDate(itemId, targetDate) {
   return updateDoc(doc(db, 'ivc_backlog', itemId), { targetDate, updatedAt: serverTimestamp() });
 }
 
+export async function updateBacklogStartDate(itemId, startDate) {
+  return updateDoc(doc(db, 'ivc_backlog', itemId), { startDate, updatedAt: serverTimestamp() });
+}
+
+export async function deleteIdea(ideaId, deletedBy, reason) {
+  const ref = doc(db, 'ivc_ideas', ideaId);
+  const snap = await getDoc(ref);
+  if (snap.exists()) {
+    await addDoc(collection(db, 'ivc_audit_log'), {
+      type: 'idea_deleted', entityId: ideaId, entityTitle: snap.data().title,
+      snapshot: snap.data(), deletedBy, reason, clientId: 'ivc',
+      timestamp: serverTimestamp(), notifyNouvia: true,
+    });
+  }
+  return deleteDoc(ref);
+}
+
+export async function addIdeaNote(ideaId, text, addedBy = 'client') {
+  return updateDoc(doc(db, 'ivc_ideas', ideaId), {
+    notes: arrayUnion({ text, addedBy, timestamp: new Date().toISOString() }),
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function markBacklogObsolete(itemId, reason) {
+  await addDoc(collection(db, 'ivc_audit_log'), {
+    type: 'item_obsoleted', entityId: itemId, reason,
+    clientId: 'ivc', notifyNouvia: true, timestamp: serverTimestamp(),
+  });
+  return updateDoc(doc(db, 'ivc_backlog', itemId), { stage: 'obsolete', updatedAt: serverTimestamp() });
+}
+
 export async function moveToManagedSupport(itemId) {
   return updateDoc(doc(db, 'ivc_backlog', itemId), { stage: 'managed', managedSince: serverTimestamp(), updatedAt: serverTimestamp() });
 }

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useUser } from '../../AuthGate';
-import { getBacklog, addBacklogItem, updateBacklogNotes, updateBacklogPriority, updateBacklogTargetDate, moveToManagedSupport } from '../../services/clientCockpit';
+import { getBacklog, addBacklogItem, updateBacklogNotes, updateBacklogPriority, updateBacklogTargetDate, updateBacklogStartDate, updateBacklogStage, moveToManagedSupport, markBacklogObsolete } from '../../services/clientCockpit';
 
 const STAGES = [
   { key: 'idea', label: 'Ideas' },
@@ -175,15 +175,17 @@ function DetailPanel({ item, onClose, onNoteSaved }) {
 function RoadmapTimeline({ items, onItemClick, onUpdateItem, onReloadBacklog }) {
   const user = useUser();
   const isNouvia = user?.role === 'admin';
-  const [datePicker, setDatePicker] = useState(null);
-  const [dateValue, setDateValue] = useState('');
+  const [actionMenu, setActionMenu] = useState(null); // { item, menuAction: null|'date'|'pause'|'obsolete' }
+  const [actionDate, setActionDate] = useState('');
+  const [actionText, setActionText] = useState('');
   const [changeRequest, setChangeRequest] = useState(null);
   const [crText, setCrText] = useState('');
   const [toast, setToast] = useState(null);
-  const [dragging, setDragging] = useState(null); // { itemId, startX, originalTargetDate }
+  const [dragging, setDragging] = useState(null);
 
-  const scheduled = items.filter(i => toDate(i.startDate) || toDate(i.targetDate));
-  const unscheduled = items.filter(i => !toDate(i.startDate) && !toDate(i.targetDate));
+  const active = items.filter(i => i.stage !== 'obsolete');
+  const scheduled = active.filter(i => toDate(i.startDate) || toDate(i.targetDate));
+  const unscheduled = active.filter(i => !toDate(i.startDate) && !toDate(i.targetDate));
 
   // Calculate timeline range
   const allDates = scheduled.flatMap(i => [toDate(i.startDate), toDate(i.targetDate)].filter(Boolean));
@@ -226,28 +228,66 @@ function RoadmapTimeline({ items, onItemClick, onUpdateItem, onReloadBacklog }) 
     if (isLocked(item)) {
       setChangeRequest(item);
     } else {
-      const d = toDate(item.targetDate);
-      setDateValue(d ? d.toISOString().split('T')[0] : '');
-      setDatePicker({ itemId: item.id, item });
+      setActionMenu({ item, menuAction: null });
+      setActionDate('');
+      setActionText('');
     }
   };
 
   const handleDragStart = (item, e) => {
     if (!canDrag(item)) { e.preventDefault(); return; }
-    const d = toDate(item.targetDate);
-    setDragging({ itemId: item.id, startX: e.clientX, originalTargetDate: d });
+    const s = toDate(item.startDate);
+    const t = toDate(item.targetDate);
+    const durationMs = (s && t) ? t.getTime() - s.getTime() : 0;
+    setDragging({ itemId: item.id, startX: e.clientX, originalStartDate: s, originalTargetDate: t, durationMs });
     e.dataTransfer.effectAllowed = 'move';
   };
 
   const handleDragEnd = () => setDragging(null);
 
-  const handleDateUpdate = async () => {
-    if (!datePicker || !dateValue) return;
-    await updateBacklogTargetDate(datePicker.itemId, new Date(dateValue));
-    setDatePicker(null);
-    setToast('Date updated');
+  const closeMenu = () => { setActionMenu(null); setActionDate(''); setActionText(''); };
+
+  const handleStartDateUpdate = async () => {
+    if (!actionMenu || !actionDate) return;
+    const item = actionMenu.item;
+    const newStart = new Date(actionDate);
+    const oldStart = toDate(item.startDate);
+    const oldTarget = toDate(item.targetDate);
+    const duration = (oldStart && oldTarget) ? oldTarget.getTime() - oldStart.getTime() : 30 * 24 * 3600 * 1000;
+    const newTarget = new Date(newStart.getTime() + duration);
+    onUpdateItem(item.id, {
+      startDate: { seconds: Math.floor(newStart.getTime() / 1000) },
+      targetDate: { seconds: Math.floor(newTarget.getTime() / 1000) },
+    });
+    await updateBacklogStartDate(item.id, newStart.toISOString());
+    await updateBacklogTargetDate(item.id, newTarget.toISOString());
+    closeMenu();
+    setToast('Dates updated');
     setTimeout(() => setToast(null), 3000);
-    // Parent will reload
+  };
+
+  const handlePauseRequest = async () => {
+    if (!actionMenu || !actionText.trim()) return;
+    await addBacklogItem('ivc', {
+      title: `Pause Request: ${actionMenu.item.title}`,
+      description: actionText.trim(),
+      stage: 'idea', linkedPillar: actionMenu.item.linkedPillar,
+      estimatedEffort: 'S', isPauseRequest: true,
+      linkedOriginalId: actionMenu.item.id, priority: 99,
+    });
+    closeMenu();
+    setToast('Pause request submitted — Nouvia will review and update your timeline');
+    setTimeout(() => setToast(null), 4000);
+    onReloadBacklog();
+  };
+
+  const handleObsolete = async () => {
+    if (!actionMenu) return;
+    await markBacklogObsolete(actionMenu.item.id, actionText.trim());
+    closeMenu();
+    setToast('Item marked as obsolete — Nouvia notified');
+    setTimeout(() => setToast(null), 3000);
+    onReloadBacklog();
   };
 
   const handleSubmitCR = async () => {
@@ -292,13 +332,18 @@ function RoadmapTimeline({ items, onItemClick, onUpdateItem, onReloadBacklog }) 
             e.preventDefault();
             const deltaX = e.clientX - dragging.startX;
             const daysDelta = Math.round(deltaX / (MONTH_WIDTH / 30));
-            if (Math.abs(daysDelta) >= 1 && dragging.originalTargetDate) {
-              const newDate = new Date(dragging.originalTargetDate);
-              newDate.setDate(newDate.getDate() + daysDelta);
-              const newTimestamp = { seconds: Math.floor(newDate.getTime() / 1000) };
-              // Optimistic local state update so bar moves immediately
-              onUpdateItem(dragging.itemId, { targetDate: newTimestamp });
-              await updateBacklogTargetDate(dragging.itemId, newDate.toISOString());
+            if (Math.abs(daysDelta) >= 1 && (dragging.originalStartDate || dragging.originalTargetDate)) {
+              const newStart = dragging.originalStartDate ? new Date(dragging.originalStartDate) : null;
+              const newTarget = dragging.originalTargetDate ? new Date(dragging.originalTargetDate) : null;
+              if (newStart) newStart.setDate(newStart.getDate() + daysDelta);
+              if (newTarget) newTarget.setDate(newTarget.getDate() + daysDelta);
+              // Optimistic local state update — shift whole bar
+              const updates = {};
+              if (newStart) updates.startDate = { seconds: Math.floor(newStart.getTime() / 1000) };
+              if (newTarget) updates.targetDate = { seconds: Math.floor(newTarget.getTime() / 1000) };
+              onUpdateItem(dragging.itemId, updates);
+              if (newStart) await updateBacklogStartDate(dragging.itemId, newStart.toISOString());
+              if (newTarget) await updateBacklogTargetDate(dragging.itemId, newTarget.toISOString());
               setToast('Date updated');
               setTimeout(() => setToast(null), 3000);
             }
@@ -373,17 +418,55 @@ function RoadmapTimeline({ items, onItemClick, onUpdateItem, onReloadBacklog }) 
         </div>
       </div>
 
-      {/* Date picker popover */}
-      {datePicker && (
-        <div className="fixed inset-0 z-40" onClick={() => setDatePicker(null)}>
-          <div className="absolute bg-white border border-gray-200 rounded-xl p-3 shadow-xl z-50 w-56" style={{ top: '40%', left: '50%', transform: 'translate(-50%, -50%)' }} onClick={e => e.stopPropagation()}>
-            <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Target Date</div>
-            <input type="date" value={dateValue} onChange={e => setDateValue(e.target.value)}
-              className="border border-gray-200 rounded-lg px-2 py-1 text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-500" />
-            <div className="flex gap-2 mt-2">
-              <button onClick={handleDateUpdate} className="bg-blue-500 text-white text-xs px-3 py-1.5 rounded-lg flex-1">Update</button>
-              <button onClick={() => setDatePicker(null)} className="text-gray-500 text-xs px-3 py-1.5">Cancel</button>
-            </div>
+      {/* 3-Action Menu */}
+      {actionMenu && (
+        <div className="fixed inset-0 z-40" onClick={closeMenu}>
+          <div className="absolute bg-white border border-gray-200 rounded-xl shadow-xl z-50 w-64" style={{ top: '35%', left: '50%', transform: 'translate(-50%, -50%)' }} onClick={e => e.stopPropagation()}>
+            {!actionMenu.menuAction ? (
+              <div className="p-1">
+                <button onClick={() => setActionMenu(m => ({ ...m, menuAction: 'date' }))} className="flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-gray-50 cursor-pointer w-full text-left text-gray-700">
+                  📅 Change Start Date
+                </button>
+                <button onClick={() => setActionMenu(m => ({ ...m, menuAction: 'pause' }))} className="flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-gray-50 cursor-pointer w-full text-left text-amber-600">
+                  ⏸ Request a Pause
+                </button>
+                <button onClick={() => setActionMenu(m => ({ ...m, menuAction: 'obsolete' }))} className="flex items-center gap-2 px-3 py-2 text-sm rounded-lg hover:bg-gray-50 cursor-pointer w-full text-left text-red-500">
+                  🚫 Mark as Obsolete
+                </button>
+              </div>
+            ) : actionMenu.menuAction === 'date' ? (
+              <div className="p-3">
+                <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">New Start Date</div>
+                <input type="date" value={actionDate} onChange={e => setActionDate(e.target.value)}
+                  className="border border-gray-200 rounded-lg px-2 py-1 text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <p className="text-xs text-gray-400 mt-1">End date will shift to keep the same duration</p>
+                <div className="flex gap-2 mt-2">
+                  <button onClick={handleStartDateUpdate} disabled={!actionDate} className={`bg-blue-500 text-white text-xs px-3 py-1.5 rounded-lg flex-1 ${!actionDate ? 'opacity-50' : ''}`}>Update</button>
+                  <button onClick={closeMenu} className="text-gray-500 text-xs px-3 py-1.5">Cancel</button>
+                </div>
+              </div>
+            ) : actionMenu.menuAction === 'pause' ? (
+              <div className="p-3">
+                <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Request a Pause</div>
+                <textarea value={actionText} onChange={e => setActionText(e.target.value)} placeholder="Reason for pause..."
+                  className="w-full border border-gray-200 rounded-lg px-2 py-1 text-sm h-16 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <div className="flex gap-2 mt-2">
+                  <button onClick={handlePauseRequest} disabled={!actionText.trim()} className={`bg-amber-500 text-white text-xs px-3 py-1.5 rounded-lg flex-1 ${!actionText.trim() ? 'opacity-50' : ''}`}>Submit</button>
+                  <button onClick={closeMenu} className="text-gray-500 text-xs px-3 py-1.5">Cancel</button>
+                </div>
+              </div>
+            ) : (
+              <div className="p-3">
+                <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Mark as Obsolete</div>
+                <p className="text-xs text-gray-500 mb-2">This item will be removed from your active roadmap.</p>
+                <input value={actionText} onChange={e => setActionText(e.target.value)} placeholder="Reason (optional)"
+                  className="w-full border border-gray-200 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                <div className="flex gap-2 mt-2">
+                  <button onClick={handleObsolete} className="bg-red-500 text-white text-xs px-3 py-1.5 rounded-lg flex-1">Confirm</button>
+                  <button onClick={closeMenu} className="text-gray-500 text-xs px-3 py-1.5">Cancel</button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
