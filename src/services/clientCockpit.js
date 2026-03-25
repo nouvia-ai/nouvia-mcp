@@ -200,6 +200,19 @@ export async function markBacklogObsolete(itemId, reason) {
   return updateDoc(doc(db, 'ivc_backlog', itemId), { stage: 'obsolete', updatedAt: serverTimestamp() });
 }
 
+export async function deleteBacklogItem(itemId, deletedBy, reason) {
+  const ref = doc(db, 'ivc_backlog', itemId);
+  const snap = await getDoc(ref);
+  if (snap.exists()) {
+    await addDoc(collection(db, 'ivc_audit_log'), {
+      type: 'backlog_item_deleted', entityId: itemId, entityTitle: snap.data().title,
+      snapshot: snap.data(), deletedBy, reason, clientId: 'ivc',
+      notifyNouvia: false, timestamp: serverTimestamp(),
+    });
+  }
+  return deleteDoc(ref);
+}
+
 export async function moveToManagedSupport(itemId) {
   return updateDoc(doc(db, 'ivc_backlog', itemId), { stage: 'managed', managedSince: serverTimestamp(), updatedAt: serverTimestamp() });
 }

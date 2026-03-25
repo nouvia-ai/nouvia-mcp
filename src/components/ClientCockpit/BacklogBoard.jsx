@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useUser } from '../../AuthGate';
-import { getBacklog, addBacklogItem, updateBacklogNotes, updateBacklogPriority, updateBacklogTargetDate, updateBacklogStartDate, updateBacklogStage, moveToManagedSupport, markBacklogObsolete } from '../../services/clientCockpit';
+import { getBacklog, addBacklogItem, updateBacklogNotes, updateBacklogPriority, updateBacklogTargetDate, updateBacklogStartDate, updateBacklogStage, moveToManagedSupport, markBacklogObsolete, deleteBacklogItem } from '../../services/clientCockpit';
 
 const STAGES = [
   { key: 'idea', label: 'Ideas' },
@@ -41,11 +41,12 @@ function fmtDate(v) {
 }
 
 /* ══════════ DETAIL PANEL — WS4 ══════════ */
-function DetailPanel({ item, onClose, onNoteSaved, onChangeRequest }) {
+function DetailPanel({ item, onClose, onNoteSaved, onChangeRequest, onDelete }) {
   const user = useUser();
   const isNouvia = user?.role === 'admin';
   const [noteText, setNoteText] = useState('');
   const [saving, setSaving] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [toast, setToast] = useState(null);
   const badge = STAGE_BADGE[item.stage] || STAGE_BADGE.idea;
   const isLocked = item.stage === 'in_progress' || item.stage === 'done';
@@ -150,6 +151,23 @@ function DetailPanel({ item, onClose, onNoteSaved, onChangeRequest }) {
               className="bg-purple-500 text-white text-sm px-4 py-2 rounded-lg hover:bg-purple-600 w-full font-medium">
               Move to Managed Support
             </button>
+          </div>
+        )}
+
+        {/* Delete — idea stage only */}
+        {item.stage === 'idea' && (
+          <div className="p-4 border-t border-gray-100">
+            {!showDeleteConfirm ? (
+              <button onClick={() => setShowDeleteConfirm(true)} className="text-red-400 text-sm hover:text-red-600">Delete Item</button>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-sm text-gray-500">Are you sure? This cannot be undone.</p>
+                <div className="flex gap-2">
+                  <button onClick={() => setShowDeleteConfirm(false)} className="text-gray-500 text-sm">Cancel</button>
+                  <button onClick={() => onDelete?.(item)} className="bg-red-500 text-white text-sm px-3 py-1 rounded-lg hover:bg-red-600">Delete</button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -672,7 +690,8 @@ export default function BacklogBoard() {
       {/* Detail panel */}
       {detailItem && (
         <DetailPanel item={detailItem} onClose={() => setDetailItem(null)} onNoteSaved={handleNoteSaved}
-          onChangeRequest={(item) => { setChangeRequestItem(item); setChangeRequestText(''); }} />
+          onChangeRequest={(item) => { setChangeRequestItem(item); setChangeRequestText(''); }}
+          onDelete={async (item) => { await deleteBacklogItem(item.id, 'client', ''); setDetailItem(null); loadBacklog(); }} />
       )}
 
       {/* Change Request modal — ROOT LEVEL, z-50 */}
