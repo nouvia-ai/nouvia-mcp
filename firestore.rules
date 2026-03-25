@@ -89,5 +89,22 @@ service cloud.firestore {
       allow read, write: if isBen();
     }
 
+    // ── IVC AI Cockpit collections (authenticated users can read/write) ────
+    match /ivc_goals/{docId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /ivc_issues/{docId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /ivc_pillars/{docId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /ivc_ideas/{docId} {
+      allow read, write: if isAuthenticated();
+    }
+    match /ivc_backlog/{docId} {
+      allow read, write: if isAuthenticated();
+    }
+
   }
 }
