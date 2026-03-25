@@ -1,9 +1,7 @@
 export const NIP_STATUS = {
   lastUpdated: "2026-03-25",
-
   studio: {
     label: "Nouvia Studio",
-    color: "purple",
     modules: [
       {
         id: "bsi",
@@ -37,6 +35,7 @@ export const NIP_STATUS = {
           { label: "Skills registry", status: "live" },
           { label: "NCC core component registry", status: "live" },
           { label: "Weekly todos + OKRs", status: "live" },
+          { label: "Governance queue", status: "live" },
           { label: "Activity feed (audit log)", status: "building" },
           { label: "Ideas queue + quote flow", status: "building" },
           { label: "Pillar manager (SCOR progress)", status: "building" },
@@ -47,7 +46,6 @@ export const NIP_STATUS = {
       }
     ]
   },
-
   phase0: {
     label: "Phase 0 — Closed-loop Firestore sync",
     status: "building",
@@ -60,10 +58,8 @@ export const NIP_STATUS = {
       { from: "DSI Ideas Queue (Ben quotes)", to: "AIMS Ideas (Quoted status)", status: "building" },
     ]
   },
-
   aims: {
     label: "AI Management System — AIMS",
-    color: "blue",
     modules: [
       {
         id: "command",
@@ -116,14 +112,12 @@ export const NIP_STATUS = {
       }
     ]
   },
-
   aiAgents: [
     { label: "Nouvia Strategist", status: "live", note: "Claude Sonnet 4.6 via MCP" },
     { label: "Blueprint + Forge (Claude Code)", status: "live", note: "Session-driven builds" },
     { label: "Ideas Engine (SCOR gap analysis)", status: "building", note: "Phase 0" },
     { label: "Sentinel (adoption monitoring)", status: "planned", note: "Phase 2" },
   ],
-
   intelligence: [
     { label: "Layer 1 — 62 books / 7 clusters", status: "live" },
     { label: "Layer 2 — 48 application rules", status: "live" },
@@ -131,7 +125,6 @@ export const NIP_STATUS = {
     { label: "SCOR manufacturing framework", status: "building", note: "Harvesting in progress" },
     { label: "NCC registry (14 components)", status: "live" },
   ],
-
   infrastructure: [
     { label: "Firebase Hosting + Firestore", status: "live" },
     { label: "Firebase Auth (Google sign-in)", status: "live" },
@@ -143,4 +136,4 @@ export const NIP_STATUS = {
     { label: "Forge staging + QA gates", status: "agentic" },
     { label: "Multi-client NCC layer", status: "agentic" },
   ]
-};
+}
