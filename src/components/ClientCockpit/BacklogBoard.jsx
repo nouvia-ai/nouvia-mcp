@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useUser } from '../../AuthGate';
 import { getBacklog, addBacklogItem, updateBacklogNotes, updateBacklogPriority, updateBacklogTargetDate, moveToManagedSupport } from '../../services/clientCockpit';
 
 const STAGES = [
@@ -41,6 +42,8 @@ function fmtDate(v) {
 
 /* ══════════ DETAIL PANEL — WS4 ══════════ */
 function DetailPanel({ item, onClose, onNoteSaved }) {
+  const user = useUser();
+  const isNouvia = user?.role === 'admin';
   const [noteText, setNoteText] = useState('');
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState(null);
@@ -140,8 +143,8 @@ function DetailPanel({ item, onClose, onNoteSaved }) {
           </div>
         </div>
 
-        {/* Move to Managed Support (done items) */}
-        {item.stage === 'done' && (
+        {/* Move to Managed Support (done items — Nouvia only) */}
+        {item.stage === 'done' && isNouvia && (
           <div className="p-4 border-t border-gray-100">
             <button onClick={async () => { await moveToManagedSupport(item.id); onNoteSaved(item.id, item.notes || ''); onClose(); }}
               className="bg-purple-500 text-white text-sm px-4 py-2 rounded-lg hover:bg-purple-600 w-full font-medium">
@@ -170,11 +173,14 @@ function DetailPanel({ item, onClose, onNoteSaved }) {
 
 /* ══════════ ROADMAP TIMELINE — WS5 ══════════ */
 function RoadmapTimeline({ items, onItemClick }) {
-  const [datePicker, setDatePicker] = useState(null); // { itemId, x, y }
+  const user = useUser();
+  const isNouvia = user?.role === 'admin';
+  const [datePicker, setDatePicker] = useState(null);
   const [dateValue, setDateValue] = useState('');
   const [changeRequest, setChangeRequest] = useState(null);
   const [crText, setCrText] = useState('');
   const [toast, setToast] = useState(null);
+  const [dragging, setDragging] = useState(null); // { itemId, startX, originalTargetDate }
 
   const scheduled = items.filter(i => toDate(i.startDate) || toDate(i.targetDate));
   const unscheduled = items.filter(i => !toDate(i.startDate) && !toDate(i.targetDate));
@@ -213,7 +219,8 @@ function RoadmapTimeline({ items, onItemClick }) {
     return { x, w };
   };
 
-  const isLocked = (item) => item.stage === 'in_progress' || item.stage === 'done';
+  const isLocked = (item) => !isNouvia && (item.stage === 'in_progress' || item.stage === 'done' || item.stage === 'managed');
+  const canDrag = (item) => isNouvia || item.stage === 'idea' || item.stage === 'approved';
 
   const handleBarClick = (item, e) => {
     if (isLocked(item)) {
@@ -224,6 +231,15 @@ function RoadmapTimeline({ items, onItemClick }) {
       setDatePicker({ itemId: item.id, item });
     }
   };
+
+  const handleDragStart = (item, e) => {
+    if (!canDrag(item)) { e.preventDefault(); return; }
+    const d = toDate(item.targetDate);
+    setDragging({ itemId: item.id, startX: e.clientX, originalTargetDate: d });
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragEnd = () => setDragging(null);
 
   const handleDateUpdate = async () => {
     if (!datePicker || !dateValue) return;
@@ -268,7 +284,23 @@ function RoadmapTimeline({ items, onItemClick }) {
         </div>
 
         {/* Item rows */}
-        <div className="relative">
+        <div className="relative"
+          onDragOver={(e) => { if (dragging) e.preventDefault(); }}
+          onDrop={async (e) => {
+            if (!dragging) return;
+            e.preventDefault();
+            const deltaX = e.clientX - dragging.startX;
+            const daysDelta = Math.round(deltaX / (MONTH_WIDTH / 30));
+            if (Math.abs(daysDelta) >= 1 && dragging.originalTargetDate) {
+              const newDate = new Date(dragging.originalTargetDate);
+              newDate.setDate(newDate.getDate() + daysDelta);
+              await updateBacklogTargetDate(dragging.itemId, newDate.toISOString());
+              setToast('Date updated');
+              setTimeout(() => setToast(null), 3000);
+            }
+            setDragging(null);
+          }}
+        >
           {/* Today marker */}
           <div className="absolute top-0 bottom-0 border-l-2 border-blue-400 border-dashed z-10" style={{ left: 240 + todayX }}>
             <span className="absolute -top-0.5 -left-4 text-xs text-blue-500 font-medium bg-white px-1">Today</span>
@@ -295,7 +327,12 @@ function RoadmapTimeline({ items, onItemClick }) {
                   {bar && (
                     <div
                       onClick={(e) => handleBarClick(item, e)}
-                      className={`absolute top-2 h-7 rounded-md border cursor-pointer hover:opacity-80 transition-opacity flex items-center px-2 overflow-hidden ${barCls}`}
+                      draggable={canDrag(item)}
+                      onDragStart={(e) => handleDragStart(item, e)}
+                      onDragEnd={handleDragEnd}
+                      className={`absolute top-2 h-7 rounded-md border transition-opacity flex items-center px-2 overflow-hidden ${barCls} ${
+                        canDrag(item) ? 'cursor-grab active:cursor-grabbing hover:opacity-80' : locked ? 'cursor-not-allowed opacity-70' : 'cursor-pointer hover:opacity-80'
+                      } ${dragging?.itemId === item.id ? 'opacity-30' : ''}`}
                       style={{ left: bar.x, width: bar.w }}
                       title={item.title}
                     >
