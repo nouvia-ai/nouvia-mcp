@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { getBacklog } from '../../services/clientCockpit';
+import { useState, useEffect, useMemo } from 'react';
+import { getBacklog, addBacklogItem, updateBacklogNotes, updateBacklogPriority, updateBacklogTargetDate } from '../../services/clientCockpit';
 
 const STAGES = [
   { key: 'idea', label: 'Ideas' },
@@ -8,30 +8,382 @@ const STAGES = [
   { key: 'done', label: 'Done' },
 ];
 
-function groupByMonth(items) {
-  const groups = {};
-  items.forEach(item => {
-    if (item.targetDate) {
-      const date = new Date(item.targetDate.seconds ? item.targetDate.seconds * 1000 : item.targetDate);
-      const key = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(item);
-    } else {
-      if (!groups['Unscheduled']) groups['Unscheduled'] = [];
-      groups['Unscheduled'].push(item);
-    }
-  });
-  return groups;
+const STAGE_BADGE = {
+  done: { cls: 'bg-green-100 text-green-700', label: '✓ DELIVERED' },
+  in_progress: { cls: 'bg-blue-100 text-blue-700', label: '🔨 BUILDING' },
+  approved: { cls: 'bg-yellow-50 text-yellow-700', label: '✓ APPROVED' },
+  idea: { cls: 'bg-gray-100 text-gray-600', label: '💡 IDEA' },
+};
+
+const STAGE_BAR = {
+  done: 'bg-green-200 border-green-300 text-green-800',
+  in_progress: 'bg-blue-200 border-blue-300 text-blue-800',
+  approved: 'bg-yellow-100 border-yellow-300 text-yellow-700',
+  idea: 'bg-gray-100 border-gray-200 text-gray-500',
+};
+
+function toDate(v) {
+  if (!v) return null;
+  if (v.seconds) return new Date(v.seconds * 1000);
+  if (v instanceof Date) return v;
+  return new Date(v);
 }
 
+function fmtDate(v) {
+  const d = toDate(v);
+  return d ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null;
+}
+
+/* ══════════ DETAIL PANEL — WS4 ══════════ */
+function DetailPanel({ item, onClose, onNoteSaved }) {
+  const [noteText, setNoteText] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [toast, setToast] = useState(null);
+  const badge = STAGE_BADGE[item.stage] || STAGE_BADGE.idea;
+  const isLocked = item.stage === 'in_progress' || item.stage === 'done';
+
+  const handleSaveNote = async () => {
+    if (!noteText.trim()) return;
+    setSaving(true);
+    const ts = new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+    const newNotes = (item.notes || '') + (item.notes ? '\n\n' : '') + `[${ts}]: ${noteText.trim()}`;
+    await updateBacklogNotes(item.id, newNotes);
+    setNoteText('');
+    setSaving(false);
+    setToast('Note saved');
+    setTimeout(() => setToast(null), 3000);
+    onNoteSaved(item.id, newNotes);
+  };
+
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/20 z-30" onClick={onClose} />
+      <div className="fixed top-0 right-0 h-full w-96 bg-white shadow-2xl z-40 flex flex-col overflow-y-auto transition-transform duration-200">
+        {/* Header */}
+        <div className="sticky top-0 bg-white border-b border-gray-100 p-4 z-10">
+          <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-lg">✕</button>
+          <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${badge.cls}`}>{badge.label}</span>
+          <h2 className="text-lg font-semibold text-gray-900 mt-2 pr-8">{item.title}</h2>
+          <p className="text-sm text-gray-500 mt-1">{item.description}</p>
+        </div>
+
+        <div className="p-4 space-y-4 flex-1">
+          {/* Detail fields grid */}
+          <div className="grid grid-cols-2 gap-3">
+            {item.value > 0 && (
+              <div className="bg-gray-50 rounded-xl p-4">
+                <div className="text-xs text-gray-400 uppercase tracking-wider">Value</div>
+                <div className="text-lg font-semibold text-gray-900">${Math.round(item.value / 1000)}k</div>
+              </div>
+            )}
+            {item.monthlyFee > 0 && (
+              <div className="bg-gray-50 rounded-xl p-4">
+                <div className="text-xs text-gray-400 uppercase tracking-wider">Monthly</div>
+                <div className="text-lg font-semibold text-gray-900">${Math.round(item.monthlyFee / 1000)}k/mo</div>
+              </div>
+            )}
+            {item.startDate && (
+              <div className="bg-gray-50 rounded-xl p-4">
+                <div className="text-xs text-gray-400 uppercase tracking-wider">Start</div>
+                <div className="text-lg font-semibold text-gray-900">{fmtDate(item.startDate)}</div>
+              </div>
+            )}
+            {item.stage === 'done' && item.deliveredDate && (
+              <div className="bg-gray-50 rounded-xl p-4">
+                <div className="text-xs text-gray-400 uppercase tracking-wider">Delivered</div>
+                <div className="text-lg font-semibold text-gray-900">{fmtDate(item.deliveredDate)}</div>
+              </div>
+            )}
+            {item.stage !== 'done' && item.targetDate && (
+              <div className="bg-gray-50 rounded-xl p-4">
+                <div className="text-xs text-gray-400 uppercase tracking-wider">Est. Delivery</div>
+                <div className="text-lg font-semibold text-gray-900">{fmtDate(item.targetDate)}</div>
+              </div>
+            )}
+          </div>
+
+          {/* Components */}
+          {item.components?.length > 0 && (
+            <div>
+              <div className="text-xs text-gray-400 uppercase tracking-wider mb-2">Components</div>
+              <div className="flex flex-wrap gap-1">
+                {item.components.map((c, i) => (
+                  <span key={i} className="bg-gray-100 text-gray-600 text-xs px-2 py-1 rounded-full">{c}</span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Notes */}
+          <div>
+            <div className="text-xs text-gray-400 uppercase tracking-wider mb-2">Notes</div>
+            {item.notes && (
+              <div className="text-sm text-gray-600 whitespace-pre-wrap mb-3 bg-gray-50 rounded-lg p-3">{item.notes}</div>
+            )}
+            <textarea
+              value={noteText}
+              onChange={e => setNoteText(e.target.value)}
+              placeholder="Add a note..."
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm h-20 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <div className="flex justify-end mt-2">
+              <button onClick={handleSaveNote} disabled={!noteText.trim() || saving}
+                className={`bg-blue-500 text-white text-xs px-3 py-1.5 rounded-lg hover:bg-blue-600 ${!noteText.trim() || saving ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                {saving ? 'Saving...' : 'Save Note'}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Lock indicator */}
+        {isLocked && (
+          <div className="bg-amber-50 border-t border-amber-200 p-4">
+            <p className="text-xs text-amber-700">
+              🔒 This item is in progress. Priority and timeline changes require a Change Request.
+            </p>
+            <button className="text-amber-600 hover:text-amber-800 text-xs font-medium mt-1">Submit Change Request</button>
+          </div>
+        )}
+      </div>
+
+      {toast && (
+        <div className="fixed bottom-4 right-4 bg-green-500 text-white text-sm px-4 py-2 rounded-lg shadow-lg z-50 animate-pulse">{toast}</div>
+      )}
+    </>
+  );
+}
+
+/* ══════════ ROADMAP TIMELINE — WS5 ══════════ */
+function RoadmapTimeline({ items, onItemClick }) {
+  const [datePicker, setDatePicker] = useState(null); // { itemId, x, y }
+  const [dateValue, setDateValue] = useState('');
+  const [changeRequest, setChangeRequest] = useState(null);
+  const [crText, setCrText] = useState('');
+  const [toast, setToast] = useState(null);
+
+  const scheduled = items.filter(i => toDate(i.startDate) || toDate(i.targetDate));
+  const unscheduled = items.filter(i => !toDate(i.startDate) && !toDate(i.targetDate));
+
+  // Calculate timeline range
+  const allDates = scheduled.flatMap(i => [toDate(i.startDate), toDate(i.targetDate)].filter(Boolean));
+  const minDate = allDates.length > 0 ? new Date(Math.min(...allDates)) : new Date();
+  const maxDate = allDates.length > 0 ? new Date(Math.max(...allDates)) : new Date();
+  // Add buffer
+  const timelineStart = new Date(minDate.getFullYear(), minDate.getMonth(), 1);
+  const timelineEnd = new Date(maxDate.getFullYear(), maxDate.getMonth() + 2, 0);
+
+  const months = [];
+  let cursor = new Date(timelineStart);
+  while (cursor <= timelineEnd) {
+    months.push(new Date(cursor));
+    cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+  }
+
+  const MONTH_WIDTH = 200;
+  const totalWidth = months.length * MONTH_WIDTH;
+  const ROW_HEIGHT = 44;
+
+  const msRange = timelineEnd.getTime() - timelineStart.getTime();
+  const pxPerMs = totalWidth / msRange;
+
+  const today = new Date();
+  const todayX = Math.max(0, Math.min(totalWidth, (today.getTime() - timelineStart.getTime()) * pxPerMs));
+
+  const getBarProps = (item) => {
+    const start = toDate(item.startDate) || toDate(item.targetDate);
+    const end = toDate(item.targetDate) || toDate(item.startDate);
+    if (!start || !end) return null;
+    const x = Math.max(0, (start.getTime() - timelineStart.getTime()) * pxPerMs);
+    const w = Math.max(40, (end.getTime() - start.getTime()) * pxPerMs);
+    return { x, w };
+  };
+
+  const isLocked = (item) => item.stage === 'in_progress' || item.stage === 'done';
+
+  const handleBarClick = (item, e) => {
+    if (isLocked(item)) {
+      setChangeRequest(item);
+    } else {
+      const d = toDate(item.targetDate);
+      setDateValue(d ? d.toISOString().split('T')[0] : '');
+      setDatePicker({ itemId: item.id, item });
+    }
+  };
+
+  const handleDateUpdate = async () => {
+    if (!datePicker || !dateValue) return;
+    await updateBacklogTargetDate(datePicker.itemId, new Date(dateValue));
+    setDatePicker(null);
+    setToast('Date updated');
+    setTimeout(() => setToast(null), 3000);
+    // Parent will reload
+  };
+
+  const handleSubmitCR = async () => {
+    if (!changeRequest || !crText.trim()) return;
+    await addBacklogItem('ivc', {
+      title: `Change Request: ${changeRequest.title}`,
+      description: crText.trim(),
+      stage: 'idea',
+      linkedPillar: changeRequest.linkedPillar,
+      estimatedEffort: 'S',
+      isChangeRequest: true,
+      linkedOriginalId: changeRequest.id,
+      priority: 99,
+    });
+    setChangeRequest(null);
+    setCrText('');
+    setToast('Change request submitted — Nouvia will review and update your backlog.');
+    setTimeout(() => setToast(null), 4000);
+  };
+
+  return (
+    <div className="px-6 pb-6">
+      <div className="relative overflow-x-auto border border-gray-200 rounded-xl bg-white">
+        {/* Month headers */}
+        <div className="flex border-b border-gray-200 sticky top-0 bg-white z-10">
+          <div className="w-60 shrink-0 px-4 py-3 text-xs font-medium text-gray-400 uppercase tracking-wider border-r border-gray-100">Item</div>
+          <div className="flex" style={{ width: totalWidth }}>
+            {months.map((m, i) => (
+              <div key={i} className="text-xs font-medium text-gray-400 uppercase tracking-wider text-center py-3 border-r border-gray-100" style={{ width: MONTH_WIDTH }}>
+                {m.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Item rows */}
+        <div className="relative">
+          {/* Today marker */}
+          <div className="absolute top-0 bottom-0 border-l-2 border-blue-400 border-dashed z-10" style={{ left: 240 + todayX }}>
+            <span className="absolute -top-0.5 -left-4 text-xs text-blue-500 font-medium bg-white px-1">Today</span>
+          </div>
+
+          {scheduled.sort((a, b) => (a.priority || 99) - (b.priority || 99)).map((item, i) => {
+            const bar = getBarProps(item);
+            const locked = isLocked(item);
+            const barCls = STAGE_BAR[item.stage] || STAGE_BAR.idea;
+            const badge = STAGE_BADGE[item.stage] || STAGE_BADGE.idea;
+            return (
+              <div key={item.id} className="flex items-center border-b border-gray-50 hover:bg-gray-50 transition-colors" style={{ height: ROW_HEIGHT }}>
+                {/* Left column */}
+                <div className="w-60 shrink-0 px-4 flex items-center gap-2 border-r border-gray-100">
+                  {!locked && <span className="text-gray-300 cursor-grab text-xs">⠿</span>}
+                  <span className="text-sm font-medium text-gray-700 truncate flex-1">{item.title}</span>
+                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${badge.cls} shrink-0 hidden lg:inline`}>
+                    {item.stage === 'done' ? '✓' : item.stage === 'in_progress' ? '🔨' : item.stage === 'approved' ? '✓' : '💡'}
+                  </span>
+                </div>
+
+                {/* Timeline area */}
+                <div className="relative flex-1" style={{ width: totalWidth, height: ROW_HEIGHT }}>
+                  {bar && (
+                    <div
+                      onClick={(e) => handleBarClick(item, e)}
+                      className={`absolute top-2 h-7 rounded-md border cursor-pointer hover:opacity-80 transition-opacity flex items-center px-2 overflow-hidden ${barCls}`}
+                      style={{ left: bar.x, width: bar.w }}
+                      title={item.title}
+                    >
+                      <span className="text-xs font-medium truncate">{item.title}</span>
+                      {locked && <span className="ml-1 text-xs">🔒</span>}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Unscheduled section */}
+          {unscheduled.length > 0 && (
+            <>
+              <div className="flex items-center border-b border-gray-200 bg-gray-50" style={{ height: 32 }}>
+                <div className="w-60 shrink-0 px-4 text-xs font-medium text-gray-400 uppercase tracking-wider">Unscheduled</div>
+              </div>
+              {unscheduled.map(item => (
+                <div key={item.id} className="flex items-center border-b border-gray-50 hover:bg-gray-50" style={{ height: ROW_HEIGHT }}>
+                  <div className="w-60 shrink-0 px-4 flex items-center gap-2 border-r border-gray-100">
+                    <span className="text-gray-300 cursor-grab text-xs">⠿</span>
+                    <span className="text-sm font-medium text-gray-700 truncate flex-1">{item.title}</span>
+                  </div>
+                  <div className="flex-1 flex items-center px-4" style={{ width: totalWidth }}>
+                    <div className="border border-dashed border-gray-300 rounded-md h-7 w-32 flex items-center justify-center">
+                      <span className="text-xs text-gray-400">No dates set</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Date picker popover */}
+      {datePicker && (
+        <div className="fixed inset-0 z-40" onClick={() => setDatePicker(null)}>
+          <div className="absolute bg-white border border-gray-200 rounded-xl p-3 shadow-xl z-50 w-56" style={{ top: '40%', left: '50%', transform: 'translate(-50%, -50%)' }} onClick={e => e.stopPropagation()}>
+            <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-2">Target Date</div>
+            <input type="date" value={dateValue} onChange={e => setDateValue(e.target.value)}
+              className="border border-gray-200 rounded-lg px-2 py-1 text-sm w-full focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <div className="flex gap-2 mt-2">
+              <button onClick={handleDateUpdate} className="bg-blue-500 text-white text-xs px-3 py-1.5 rounded-lg flex-1">Update</button>
+              <button onClick={() => setDatePicker(null)} className="text-gray-500 text-xs px-3 py-1.5">Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Change Request modal */}
+      {changeRequest && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center" onClick={() => { setChangeRequest(null); setCrText(''); }}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md mx-4 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">🔒 This Item is In Progress</h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Changing the timeline or priority of an item already in progress requires a formal change request. Nouvia will review and update the backlog accordingly.
+            </p>
+            <div className="mb-4">
+              <label className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1 block">What would you like to change?</label>
+              <textarea value={crText} onChange={e => setCrText(e.target.value)}
+                placeholder="Describe the change you need..."
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm h-20 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            </div>
+            <div className="flex justify-end gap-3">
+              <button onClick={() => { setChangeRequest(null); setCrText(''); }} className="text-gray-500 hover:text-gray-700 text-sm font-medium">Cancel</button>
+              <button onClick={handleSubmitCR} disabled={!crText.trim()}
+                className={`bg-amber-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-amber-600 ${!crText.trim() ? 'opacity-50 cursor-not-allowed' : ''}`}>
+                Submit Change Request
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {toast && (
+        <div className={`fixed bottom-4 right-4 text-white text-sm px-4 py-2 rounded-lg shadow-lg z-50 animate-pulse ${toast.includes('Change request') ? 'bg-amber-500' : 'bg-green-500'}`}>
+          {toast}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ══════════ MAIN EXPORT ══════════ */
 export default function BacklogBoard() {
   const [view, setView] = useState('board');
   const [backlog, setBacklog] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [detailItem, setDetailItem] = useState(null);
 
-  useEffect(() => {
-    getBacklog('ivc').then(b => { setBacklog(b); setLoading(false); }).catch(() => setLoading(false));
-  }, []);
+  const loadBacklog = () => {
+    setLoading(true);
+    getBacklog('ivc').then(b => { setBacklog(b.sort((a, b) => (a.priority || 99) - (b.priority || 99))); setLoading(false); }).catch(() => setLoading(false));
+  };
+
+  useEffect(() => { loadBacklog(); }, []);
+
+  const handleNoteSaved = (itemId, newNotes) => {
+    setBacklog(prev => prev.map(i => i.id === itemId ? { ...i, notes: newNotes } : i));
+    if (detailItem?.id === itemId) setDetailItem(prev => ({ ...prev, notes: newNotes }));
+  };
 
   if (loading) {
     return (
@@ -43,8 +395,6 @@ export default function BacklogBoard() {
       </div>
     );
   }
-
-  const monthGroups = groupByMonth(backlog);
 
   return (
     <div>
@@ -75,7 +425,6 @@ export default function BacklogBoard() {
               const items = backlog.filter(i => i.stage === stage.key);
               return (
                 <div key={stage.key} className="w-64 shrink-0">
-                  {/* Column header */}
                   <div className="flex items-center gap-2 mb-3">
                     {stage.key === 'in_progress' ? (
                       <div className="flex items-center gap-1.5">
@@ -90,13 +439,13 @@ export default function BacklogBoard() {
                     <span className="bg-gray-200 text-gray-500 text-xs px-2 py-0.5 rounded-full font-medium">{items.length}</span>
                   </div>
 
-                  {/* Column body */}
                   <div className="bg-gray-100 rounded-xl p-3 min-h-48 space-y-2">
                     {items.length === 0 ? (
                       <div className="text-center py-6 text-gray-400 text-sm">No items</div>
                     ) : (
                       items.map(item => (
-                        <div key={item.id} className="bg-white rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow space-y-2">
+                        <div key={item.id} onClick={() => setDetailItem(item)}
+                          className="bg-white rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow space-y-2 cursor-pointer">
                           <p className="text-sm font-medium text-gray-900 line-clamp-2">{item.title}</p>
                           <div className="flex items-center justify-between gap-2">
                             <span className="bg-gray-100 text-gray-500 text-xs px-2 py-0.5 rounded-full border border-gray-200 capitalize">
@@ -108,7 +457,6 @@ export default function BacklogBoard() {
                               </span>
                             )}
                           </div>
-                          {/* Value badges */}
                           {(item.value || item.monthlyFee) && (
                             <div className="flex items-center gap-1 flex-wrap">
                               {item.value > 0 && (
@@ -123,12 +471,6 @@ export default function BacklogBoard() {
                               )}
                             </div>
                           )}
-                          {item.linkedGoalIds?.length > 0 && (
-                            <div className="flex items-center gap-1">
-                              <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                              <span className="text-xs text-blue-500 truncate">Goal linked</span>
-                            </div>
-                          )}
                         </div>
                       ))
                     )}
@@ -139,26 +481,13 @@ export default function BacklogBoard() {
           </div>
         </div>
       ) : (
-        /* ── ROADMAP VIEW ── */
-        <div className="overflow-x-auto px-6 pb-6">
-          <div className="flex gap-6">
-            {Object.entries(monthGroups).map(([month, items]) => (
-              <div key={month} className="min-w-48 shrink-0">
-                <div className={`text-xs font-medium uppercase tracking-wider mb-3 ${month === 'Unscheduled' ? 'text-gray-400' : 'text-gray-600'}`}>
-                  {month}
-                </div>
-                <div className="space-y-2">
-                  {items.map(item => (
-                    <div key={item.id} className="bg-white rounded-lg px-3 py-2 border-l-4 border-blue-500 shadow-sm hover:shadow-md transition-shadow">
-                      <p className="text-sm font-medium text-gray-900 truncate">{item.title}</p>
-                      <p className="text-xs text-gray-400 capitalize mt-0.5">{(item.linkedPillar || '').replace(/_/g, ' ')}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        /* ── ROADMAP TIMELINE — WS5 ── */
+        <RoadmapTimeline items={backlog} onItemClick={setDetailItem} />
+      )}
+
+      {/* Detail panel */}
+      {detailItem && (
+        <DetailPanel item={detailItem} onClose={() => setDetailItem(null)} onNoteSaved={handleNoteSaved} />
       )}
     </div>
   );

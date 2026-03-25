@@ -140,3 +140,24 @@ export async function updateBacklogStage(itemId, stage) {
     updatedAt: serverTimestamp(),
   });
 }
+
+export async function updateBacklogNotes(itemId, notes) {
+  return updateDoc(doc(db, 'ivc_backlog', itemId), {
+    notes,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function updateBacklogPriority(itemId, priority) {
+  return updateDoc(doc(db, 'ivc_backlog', itemId), {
+    priority,
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function updateBacklogTargetDate(itemId, targetDate) {
+  return updateDoc(doc(db, 'ivc_backlog', itemId), {
+    targetDate,
+    updatedAt: serverTimestamp(),
+  });
+}
