@@ -10,6 +10,7 @@ import PipelineTab     from './tabs/PipelineTab';
 import CompetitiveLandscapeTab from './tabs/CompetitiveLandscapeTab';
 import GoalManagement  from './components/Goals/GoalManagement';
 import NIPArchitecture from './components/Cockpit/Architecture/NIPArchitecture';
+import DSIShell from './components/Cockpit/DSI/DSIShell';
 import useAdoptionScores from './hooks/useAdoptionScores';
 import { NASDetail, NASEditForm } from './components/NAS/NASWidget';
 import useRiskAssessments from './hooks/useRiskAssessments';
@@ -145,10 +146,11 @@ const NIP_SECTIONS = [
   {
     id: "os", label: "DSI", icon: "⚙",
     subTabs: [
-      { id: "coworkers",  label: "Coworkers",  icon: "⚙" },
-      { id: "skills",     label: "Skills",     icon: "◇" },
-      { id: "connectors", label: "Connectors", icon: "◈" },
-      { id: "ip_library", label: "IP Library", icon: "◎" },
+      { id: "dsi_intel",   label: "Client Intelligence", icon: "◉" },
+      { id: "coworkers",   label: "Coworkers",  icon: "⚙" },
+      { id: "skills",      label: "Skills",     icon: "◇" },
+      { id: "connectors",  label: "Connectors", icon: "◈" },
+      { id: "ip_library",  label: "IP Library", icon: "◎" },
     ],
   },
 ];
@@ -783,6 +785,7 @@ function Dashboard({ clients, experiments, decisions, trends, canvas, coworkers,
 // ─── MAIN APP ───────────────────────────────────
 export default function App() {
   const [section, setSection] = useState("cockpit");
+  const [dsiUnread, setDsiUnread] = useState(0);
   const [subTab, setSubTab]   = useState("governance");
   const [loading, setLoading] = useState(true);
   const [theme, setTheme] = useState(() => localStorage.getItem("strategist:theme") || "dark");
@@ -891,19 +894,30 @@ export default function App() {
     </div>
   );
 
-  // Inject governance count into Governance Queue sub-tab label
-  const sectionsWithBadge = NIP_SECTIONS.map(s =>
-    s.id === "cockpit" && govData.pendingCount > 0
-      ? {
-          ...s,
-          subTabs: s.subTabs.map(st =>
-            st.id === "governance"
-              ? { ...st, label: `Governance Queue (${govData.pendingCount})` }
-              : st
-          ),
-        }
-      : s
-  );
+  // Inject governance count into Governance Queue sub-tab + DSI unread badge
+  const sectionsWithBadge = NIP_SECTIONS.map(s => {
+    if (s.id === "cockpit" && govData.pendingCount > 0) {
+      return {
+        ...s,
+        subTabs: s.subTabs.map(st =>
+          st.id === "governance"
+            ? { ...st, label: `Governance Queue (${govData.pendingCount})` }
+            : st
+        ),
+      };
+    }
+    if (s.id === "os" && dsiUnread > 0) {
+      return {
+        ...s,
+        subTabs: s.subTabs.map(st =>
+          st.id === "dsi_intel"
+            ? { ...st, label: `Client Intelligence (${dsiUnread})` }
+            : st
+        ),
+      };
+    }
+    return s;
+  });
 
   const nav = (
     <Navigation
@@ -1034,7 +1048,8 @@ export default function App() {
         {activeView === "clients"     && <ClientsTab clients={clients} setClients={setClients} saveClients={sc} track={track} />}
         {activeView === "pipeline"    && <PipelineTab clients={clients} />}
 
-        {/* OS sub-tabs */}
+        {/* OS / DSI sub-tabs */}
+        {activeView === "dsi_intel"   && <DSIShell onUnreadCount={(n) => setDsiUnread(n)} />}
         {activeView === "coworkers"   && <CoworkersPane coworkers={coworkers} setCoworkers={setCoworkers} saveCoworkers={sw} canvas={canvas} />}
         {activeView === "skills"      && <SkillsPane skills={skills} setSkills={setSkills} saveSkills={sskl} />}
         {activeView === "connectors"  && <ConnectorsPane connectors={connectors} setConnectors={setConnectors} saveConnectors={scn} />}
