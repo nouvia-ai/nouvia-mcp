@@ -689,36 +689,14 @@ export default function NIPArchitecture() {
     setError(null)
     setUpdateLog(null)
     try {
-      const resp = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: 'claude-sonnet-4-20250514',
-          max_tokens: 4000,
-          messages: [{ role: 'user', content:
-            `You are the Nouvia Strategist reviewing NIP build status.
-Today: ${new Date().toLocaleDateString('en-CA')}.
-Current status: ${JSON.stringify(status, null, 2)}
-Known facts:
-- AIMS core (Command Center, Backlog, Goals, Issues, SCOR Pillars, Ideas Queue) = LIVE
-- Phase 0 (DSI bridge) = BUILDING this week
-- benTimeHours + nccDependencies = BUILDING
-- Health and Investment = PLANNED (Phase 2)
-- Architecture tab itself = just built, LIVE
-- SCOR harvesting = BUILDING (in progress)
-Update statuses to reflect current reality.
-Provide 4-5 bullet update log points.
-Respond ONLY with valid JSON, no markdown:
-{"updatedStatus":{...full NIP_STATUS object...},"updateLog":["✅ ...","🔨 ...","📋 ..."],"lastUpdated":"${new Date().toLocaleDateString('en-CA')}"}`
-          }]
-        })
-      })
-      const data = await resp.json()
-      const clean = (data.content?.[0]?.text || '').replace(/```json\n?/g,'').replace(/```\n?/g,'').trim()
-      const parsed = JSON.parse(clean)
-      const next = { ...parsed.updatedStatus, lastUpdated: parsed.lastUpdated }
+      const now = new Date().toLocaleDateString('en-CA')
+      const next = { ...status, lastUpdated: now }
       setStatus(next)
-      setUpdateLog(parsed.updateLog || [])
+      setUpdateLog([
+        `\u2705 Architecture status saved to Firestore`,
+        `\ud83d\udcca ${counts.live} Live \u00b7 ${counts.building} Building \u00b7 ${counts.planned} Planned \u00b7 ${counts.agentic} Agentic`,
+        `\u2192 Edit architectureData.js to update component statuses, then click Update to persist`,
+      ])
       await saveArchitectureStatus({ status: next, savedAt: new Date() })
       setLastSaved(new Date().toLocaleDateString())
     } catch(err) {
