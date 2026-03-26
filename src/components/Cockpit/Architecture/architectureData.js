@@ -1,5 +1,5 @@
 export const NIP_STATUS = {
-  lastUpdated: "2026-03-25",
+  lastUpdated: "2026-03-26",
   studio: {
     label: "Nouvia Studio",
     modules: [
@@ -28,19 +28,19 @@ export const NIP_STATUS = {
       {
         id: "dsi",
         label: "DSI — Delivery System Intelligence",
-        status: "building",
-        note: "Core OS live. Phase 0 bridge building.",
+        status: "live",
+        note: "Phase 0 complete. All DSI components live.",
         components: [
           { label: "Coworker registry", status: "live" },
           { label: "Skills registry", status: "live" },
           { label: "NCC core component registry", status: "live" },
           { label: "Weekly todos + OKRs", status: "live" },
           { label: "Governance queue", status: "live" },
-          { label: "Activity feed (audit log)", status: "building" },
-          { label: "Ideas queue + quote flow", status: "building" },
-          { label: "Pillar manager (SCOR progress)", status: "building" },
-          { label: "Requests feed (change + pause)", status: "building" },
-          { label: "Backlog manager + admin fields", status: "building" },
+          { label: "Activity feed (audit log)", status: "live" },
+          { label: "Ideas queue + quote flow", status: "live" },
+          { label: "Pillar manager (SCOR progress)", status: "live" },
+          { label: "Requests feed (change + pause)", status: "live" },
+          { label: "Backlog manager + admin fields", status: "live" },
           { label: "Health metrics (Sentinel)", status: "planned" },
         ]
       }
@@ -48,14 +48,14 @@ export const NIP_STATUS = {
   },
   phase0: {
     label: "Phase 0 — Closed-loop Firestore sync",
-    status: "building",
+    status: "live",
     description: "DSI reads all 6 ivc_* collections in real-time. Ben manages AIMS engagement from Studio. Changes write back to AIMS instantly.",
     syncPairs: [
-      { from: "ivc_ideas (client submits)", to: "DSI Ideas Queue", status: "building" },
-      { from: "ivc_audit_log (client deletes)", to: "DSI Activity Feed", status: "building" },
-      { from: "ivc_backlog (change requests)", to: "DSI Requests Feed", status: "building" },
-      { from: "DSI Pillar Manager (Ben updates)", to: "AIMS Command Center", status: "building" },
-      { from: "DSI Ideas Queue (Ben quotes)", to: "AIMS Ideas (Quoted status)", status: "building" },
+      { from: "ivc_ideas (client submits)", to: "DSI Ideas Queue", status: "live" },
+      { from: "ivc_audit_log (client deletes)", to: "DSI Activity Feed", status: "live" },
+      { from: "ivc_backlog (change requests)", to: "DSI Requests Feed", status: "live" },
+      { from: "DSI Pillar Manager (Ben updates)", to: "AIMS Command Center", status: "live" },
+      { from: "DSI Ideas Queue (Ben quotes)", to: "AIMS Ideas (Quoted status)", status: "live" },
     ]
   },
   aims: {

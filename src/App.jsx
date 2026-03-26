@@ -11,6 +11,7 @@ import CompetitiveLandscapeTab from './tabs/CompetitiveLandscapeTab';
 import GoalManagement  from './components/Goals/GoalManagement';
 import NIPArchitecture from './components/Cockpit/Architecture/NIPArchitecture';
 import DSIShell from './components/Cockpit/DSI/DSIShell';
+import MasterBacklog from './components/Cockpit/MasterBacklog/MasterBacklog';
 import useAdoptionScores from './hooks/useAdoptionScores';
 import { NASDetail, NASEditForm } from './components/NAS/NASWidget';
 import useRiskAssessments from './hooks/useRiskAssessments';
@@ -121,9 +122,9 @@ const NIP_SECTIONS = [
   {
     id: "cockpit", label: "Nouvia Studio", icon: "◈",
     subTabs: [
-      { id: "governance", label: "Governance Queue", icon: "▸" },
-      { id: "overview",   label: "Dashboard",        icon: "◈" },
-      { id: "architecture", label: "Architecture",   icon: "⬡" },
+      { id: "master_backlog", label: "Master Backlog", icon: "▣" },
+      { id: "overview",       label: "Dashboard",      icon: "◈" },
+      { id: "architecture",   label: "Architecture",   icon: "⬡" },
     ],
   },
   {
@@ -786,7 +787,7 @@ function Dashboard({ clients, experiments, decisions, trends, canvas, coworkers,
 export default function App() {
   const [section, setSection] = useState("cockpit");
   const [dsiUnread, setDsiUnread] = useState(0);
-  const [subTab, setSubTab]   = useState("governance");
+  const [subTab, setSubTab]   = useState("master_backlog");
   const [loading, setLoading] = useState(true);
   const [theme, setTheme] = useState(() => localStorage.getItem("strategist:theme") || "dark");
   const track = useTrackerEvents();
@@ -894,18 +895,8 @@ export default function App() {
     </div>
   );
 
-  // Inject governance count into Governance Queue sub-tab + DSI unread badge
+  // Inject DSI unread badge
   const sectionsWithBadge = NIP_SECTIONS.map(s => {
-    if (s.id === "cockpit" && govData.pendingCount > 0) {
-      return {
-        ...s,
-        subTabs: s.subTabs.map(st =>
-          st.id === "governance"
-            ? { ...st, label: `Governance Queue (${govData.pendingCount})` }
-            : st
-        ),
-      };
-    }
     if (s.id === "os" && dsiUnread > 0) {
       return {
         ...s,
@@ -934,20 +925,8 @@ export default function App() {
   return (
     <div data-theme={theme}>
       <AppShell nav={nav} wideContent={activeView === "canvas"}>
-        {/* Management Cockpit — Governance Queue sub-tab */}
-        {activeView === "governance" && !govDetailItem && <DashboardTab mode="governance" setTab={setTab} governanceProps={{
-          pendingItems: govData.pendingItems,
-          resolvedItems: govData.resolvedItems,
-          onResolve: govData.resolveItem,
-          onExpand: (item) => setGovDetailItem(item),
-        }} />}
-        {activeView === "governance" && govDetailItem && (
-          <GovernanceDetail
-            item={govDetailItem}
-            onResolve={async (id, status, notes, opt) => { await govData.resolveItem(id, status, notes, opt); setGovDetailItem(null); }}
-            onBack={() => setGovDetailItem(null)}
-          />
-        )}
+        {/* Nouvia Studio — Master Backlog sub-tab */}
+        {activeView === "master_backlog" && <MasterBacklog />}
 
         {/* Management Cockpit — Cockpit (overview) sub-tab */}
         {activeView === "overview" && !nasDetailClient && !riskDetailItem && !channelDetailItem && !channelAdding && <DashboardTab mode="overview" clients={clients} experiments={experiments} canvas={canvas} coworkers={coworkers} skills={skills} connectors={connectors} setTab={setTab} onNavigate={handleNavigate} governancePendingCount={govData.pendingCount} nasProps={{

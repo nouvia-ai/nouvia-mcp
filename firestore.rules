@@ -114,5 +114,13 @@ service cloud.firestore {
       allow read, write: if isAuthenticated();
     }
 
+    // ── Master Backlog collections ────────────────────────────────────────
+    match /master_backlog/{doc} {
+      allow read, write: if isAuthenticated();
+    }
+    match /marketing_tasks/{doc} {
+      allow read, write: if isAuthenticated();
+    }
+
   }
 }
