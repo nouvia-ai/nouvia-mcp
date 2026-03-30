@@ -125,6 +125,10 @@ service cloud.firestore {
     // ── Intelligence Layer collections ────────────────────────────────────
     // Public read: Nouvia Studio reads these unauthenticated (client-side SDK).
     // Write is locked to authenticated users only (MCP server + admin).
+    match /intelligence_clusters/{doc} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
     match /intelligence_foundations/{doc} {
       allow read: if true;
       allow write: if isAuthenticated();
