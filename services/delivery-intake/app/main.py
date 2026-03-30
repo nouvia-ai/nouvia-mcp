@@ -1,10 +1,7 @@
 """
 Delivery Intake Service — Nouvia Intelligence Platform
 Processes requirements from 4 channels: transcript, email, document, AITS portal
-Uses Vertex AI (Gemini 1.5 Flash) for requirement extraction.
-
-NOTE: Requires Vertex AI Model Garden Gemini terms acceptance in GCP Console:
-  console.cloud.google.com/vertex-ai/model-garden?project=nouvia-os
+Uses Google Gen AI SDK (Vertex AI backend) with gemini-2.5-flash.
 """
 import json
 import logging
@@ -15,8 +12,7 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-import vertexai
-from vertexai.generative_models import GenerativeModel
+from google import genai
 from google.cloud import firestore
 
 # ── Setup ─────────────────────────────────────────────────────────────────────
@@ -24,10 +20,11 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 PROJECT_ID = "nouvia-os"
-REGION = "us-central1"
+REGION     = "us-central1"
+MODEL      = "gemini-2.5-flash"
 
-vertexai.init(project=PROJECT_ID, location=REGION)
-db = firestore.Client(project=PROJECT_ID)
+gemini = genai.Client(vertexai=True, project=PROJECT_ID, location=REGION)
+db     = firestore.Client(project=PROJECT_ID)
 
 app = FastAPI(title="Nouvia Delivery Intake", version="1.0.0")
 app.add_middleware(
@@ -110,15 +107,16 @@ def now_iso() -> str:
 
 
 def call_gemini(prompt: str) -> dict:
-    """Call Gemini 1.5 Flash via Vertex AI and parse JSON response."""
-    model = GenerativeModel("gemini-2.0-flash-001")
-    response = model.generate_content(
-        prompt,
-        generation_config={
-            "response_mime_type": "application/json",
-            "temperature": 0.1,
-            "max_output_tokens": 2048,
-        },
+    """Call Gemini 2.5 Flash via Google Gen AI SDK (Vertex AI backend) and parse JSON."""
+    from google.genai import types
+    response = gemini.models.generate_content(
+        model=MODEL,
+        contents=prompt,
+        config=types.GenerateContentConfig(
+            response_mime_type="application/json",
+            temperature=0.1,
+            max_output_tokens=2048,
+        ),
     )
     text = response.text.strip()
     # Strip markdown fences if present
