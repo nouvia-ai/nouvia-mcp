@@ -257,6 +257,36 @@ def call_claude_text(prompt: str, system: str = "", max_tokens: int = 3000) -> s
     return msg.content[0].text.strip()
 
 
+def update_comm_doc(doc_id: str, new_body: str) -> int:
+    """Update an existing client_communications document with version increment.
+    Saves previous content to revisions/{version} subcollection first.
+    Returns the new version number.
+    """
+    ref  = db.collection("client_communications").document(doc_id)
+    snap = ref.get()
+    if not snap.exists:
+        raise HTTPException(status_code=404, detail=f"Document {doc_id} not found")
+    current   = snap.to_dict()
+    old_ver   = current.get("version", 1)
+    old_body  = current.get("content", "")
+    # Archive current version to revisions subcollection
+    ref.collection("revisions").document(str(old_ver)).set({
+        "version":      old_ver,
+        "content":      old_body,
+        "archived_at":  now_iso(),
+        "word_count":   len(old_body.split()) if isinstance(old_body, str) else 0,
+    })
+    new_ver = old_ver + 1
+    ref.update({
+        "content":    new_body,
+        "version":    new_ver,
+        "word_count": len(new_body.split()),
+        "updated_at": now_iso(),
+    })
+    logger.info(f"update_comm_doc {doc_id}: v{old_ver} → v{new_ver}")
+    return new_ver
+
+
 def check_adoption_declining(recent: list) -> bool:
     """True if adoption score declined across the last 3 reports (newest first)."""
     if len(recent) < 3:
@@ -267,6 +297,9 @@ def check_adoption_declining(recent: list) -> bool:
 
 def save_comm_doc(engagement_id: str, client_id: str, doc_type: str,
                   title: str, body: str) -> str:
+    """Create a new client_communications document with Markdown content.
+    Content is stored as a plain Markdown string. Version starts at 1.
+    """
     word_count = len(body.split())
     comm_doc = {
         "engagement_id": engagement_id,
@@ -274,10 +307,12 @@ def save_comm_doc(engagement_id: str, client_id: str, doc_type: str,
         "type": "enablement",
         "doc_type": doc_type,
         "title": title,
-        "content": {"body": body},
+        "content": body,          # Markdown string — single source of truth
+        "version": 1,
         "status": "draft",
         "word_count": word_count,
         "generated_at": now_iso(),
+        "updated_at": now_iso(),
         "model": "claude-sonnet-4-6",
     }
     ref = db.collection("client_communications").add(comm_doc)

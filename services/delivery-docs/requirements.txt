@@ -1,0 +1,7 @@
+fastapi>=0.104
+uvicorn[standard]>=0.24
+google-cloud-firestore>=2.13
+google-cloud-logging>=3.8
+markdown>=3.5
+python-docx>=1.1
+fpdf2>=2.7.9
