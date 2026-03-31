@@ -142,9 +142,77 @@ def health():
     return {"status": "healthy", "version": "1.0"}
 
 
+def sla_hours_for_priority(priority: str) -> int:
+    return {"urgent": 2, "high": 8, "normal": 24, "low": 72}.get(priority, 24)
+
+
+def bridge_aims_requests():
+    """Convert submitted aims_requests into change_requests for the standard pipeline."""
+    aims_snap = (
+        db.collection("aims_requests")
+        .where("status", "==", "submitted")
+        .order_by("created_at")
+        .limit(50)
+        .get()
+    )
+    bridged = 0
+    for doc in aims_snap:
+        aims_id = doc.id
+        aims = doc.to_dict()
+        ack_time = now_iso()
+        # Map AIMS category → change_request category
+        cat_map = {
+            "feature_request": "new_feature",
+            "enhancement":     "enhancement",
+            "bug_report":      "bug_fix",
+            "support_request": "change_request",
+            "question":        "question",
+        }
+        cr_category = cat_map.get(aims.get("category", "support_request"), "change_request")
+
+        # Create change_request
+        cr = {
+            "client_id":       aims.get("client_id", ""),
+            "title":           aims.get("title", ""),
+            "description":     aims.get("description", ""),
+            "category":        cr_category,
+            "priority":        aims.get("priority", "normal"),
+            "status":          "submitted",
+            "source":          "aims_portal",
+            "source_detail":   f"AIMS submission by {aims.get('submitted_by', 'unknown')}",
+            "extracted_by":    "aims_bridge",
+            "aims_request_id": aims_id,
+            "created_at":      aims.get("created_at", ack_time),
+            "updated_at":      ack_time,
+        }
+        db.collection("change_requests").add(cr)
+
+        # Calculate SLA met
+        sla_hours = sla_hours_for_priority(aims.get("priority", "normal"))
+        try:
+            created = datetime.fromisoformat(aims.get("created_at", ack_time).replace("Z", "+00:00"))
+            ack_dt  = datetime.fromisoformat(ack_time.replace("Z", "+00:00"))
+            elapsed_hours = (ack_dt - created).total_seconds() / 3600
+            sla_met = elapsed_hours <= sla_hours
+        except Exception:
+            sla_met = True
+
+        db.collection("aims_requests").document(aims_id).update({
+            "status":          "acknowledged",
+            "acknowledged_at": ack_time,
+            "updated_at":      ack_time,
+            "sla_met":         sla_met,
+        })
+        logger.info(f"[aims_bridge] {aims_id} → change_request (cat={cr_category}, sla_met={sla_met})")
+        bridged += 1
+    return bridged
+
+
 @app.post("/orchestrate/process-queue")
 async def process_queue():
-    """Pull submitted change_requests and route each one."""
+    """Bridge AIMS requests, then pull submitted change_requests and route each one."""
+    aims_bridged = bridge_aims_requests()
+
     snap = (
         db.collection("change_requests")
         .where("status", "==", "submitted")
@@ -188,8 +256,8 @@ async def process_queue():
             logger.error(f"[orchestrator] failed to route {req_id}: {e}")
             details.append({"req_id": req_id, "error": str(e)})
 
-    logger.info(f"[orchestrate/process-queue] processed={len(requests)}, routed={routed}")
-    return {"processed": len(requests), "routed": routed, "details": details}
+    logger.info(f"[orchestrate/process-queue] aims_bridged={aims_bridged}, processed={len(requests)}, routed={routed}")
+    return {"aims_bridged": aims_bridged, "processed": len(requests), "routed": routed, "details": details}
 
 
 @app.post("/orchestrate/check-health")
