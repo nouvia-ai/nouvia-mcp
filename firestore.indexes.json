@@ -172,6 +172,21 @@
       ]
     },
     {
+      "collectionGroup": "time_entries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "engagement_id", "order": "ASCENDING" },
+        { "fieldPath": "started_at",    "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "time_entries",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "date", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "delivery_estimates",
       "queryScope": "COLLECTION",
       "fields": [
