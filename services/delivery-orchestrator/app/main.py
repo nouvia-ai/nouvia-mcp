@@ -71,7 +71,7 @@ def find_active_engagement(client_id: str):
     )
     docs = list(snap)
     if docs:
-        return docs[0].id, docs[0].data()
+        return docs[0].id, docs[0].to_dict()
     return None, None
 
 
@@ -152,7 +152,7 @@ async def process_queue():
         .limit(50)
         .get()
     )
-    requests = [(doc.id, doc.data()) for doc in snap]
+    requests = [(doc.id, doc.to_dict()) for doc in snap]
 
     routed = {"defects": 0, "governance": 0, "delivery": 0, "skipped": 0}
     details = []
@@ -213,7 +213,7 @@ async def check_health():
     )
     overdue = []
     for doc in building_snap:
-        d = doc.data()
+        d = doc.to_dict()
         delivery = d.get("estimated_delivery", "")
         if delivery and delivery < today:
             overdue.append({"id": doc.id, "title": d.get("title", ""), "due": delivery})
