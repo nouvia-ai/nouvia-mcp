@@ -30,6 +30,7 @@ import { RiskSignalsSection } from '../components/Risk/RiskWidget';
 import { ChannelsSection } from '../components/Channels/ChannelsWidget';
 import { GovernanceSection } from '../components/Governance/GovernanceWidget';
 import SurvivalTrend from '../components/Cockpit/MeasureSection/SurvivalTrend';
+import DataIntegrityBanner from '../components/Cockpit/MeasureSection/DataIntegrityBanner';
 
 /* ── Design tokens ───────────────────────────── */
 const S = {
@@ -150,6 +151,9 @@ function DashboardView({ setTab, onNavigate, nasProps, riskProps, channelsProps,
   return (
     <div style={{ fontFamily: 'var(--font-sans)', maxWidth: 1440, margin: '0 auto' }}>
 
+      {/* ══════════ DATA INTEGRITY BANNER ══════════ */}
+      <DataIntegrityBanner />
+
       {/* ══════════ ROW 1: KPI TILES ══════════ */}
       <div style={{ display: 'flex', gap: S.cardGap, marginBottom: S.sectionGap }}>
         <KPITile
@@ -174,7 +178,9 @@ function DashboardView({ setTab, onNavigate, nasProps, riskProps, channelsProps,
         <KPITile
           value={survivalValue}
           label="Survival Score"
-          sub={survivalScore != null ? (survivalScore >= 70 ? 'Healthy' : survivalScore >= 40 ? 'At Risk' : 'Critical') : 'Loading'}
+          sub={survivalScore != null
+            ? `${survivalProps?.latest?.verified ? '\u{1F7E2}' : '\u{1F7E0}'} ${survivalScore >= 70 ? 'Healthy' : survivalScore >= 40 ? 'At Risk' : 'Critical'}${!survivalProps?.latest?.verified ? ' (unverified)' : ''}`
+            : 'Loading'}
           color={survivalColor}
         />
       </div>

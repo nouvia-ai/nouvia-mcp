@@ -22,13 +22,29 @@ function CardSkeleton() {
   );
 }
 
-function MetricCard({ label, value, sub, trend }) {
+function VerifiedDot({ verified, tooltip }) {
+  return (
+    <span
+      title={tooltip || (verified ? 'Verified' : 'Unverified — seeded by NIP session, awaiting confirmation')}
+      style={{
+        display: 'inline-block', width: 7, height: 7, borderRadius: '50%',
+        backgroundColor: verified ? '#27AE60' : '#F5A623',
+        marginLeft: 6, verticalAlign: 'middle', cursor: 'help',
+      }}
+    />
+  );
+}
+
+function MetricCard({ label, value, sub, trend, verified }) {
   const trendColor = trend === 'up' ? '#27AE60' : trend === 'down' ? '#E74C3C' : 'var(--color-text-ghost)';
   const trendIcon  = trend === 'up' ? '↑' : trend === 'down' ? '↓' : '→';
   return (
     <div style={{ flex: 1, padding: 'var(--space-4)', backgroundColor: 'var(--color-bg-elevated)', border: '1px solid var(--color-border-default)', borderRadius: 'var(--radius-lg)' }}>
       <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--color-text-ghost)', textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: 6, fontFamily: 'var(--font-sans)' }}>{label}</div>
-      <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--color-text-primary)', fontFamily: 'var(--font-sans)', lineHeight: 1.1 }}>{value}</div>
+      <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--color-text-primary)', fontFamily: 'var(--font-sans)', lineHeight: 1.1 }}>
+        {value}
+        {verified !== undefined && <VerifiedDot verified={verified} />}
+      </div>
       {(sub || trend) && (
         <div style={{ fontSize: 12, color: trendColor, marginTop: 4, fontFamily: 'var(--font-sans)' }}>
           {trend && <span style={{ marginRight: 4 }}>{trendIcon}</span>}{sub}
@@ -103,7 +119,7 @@ export default function FinancialMetrics() {
 
   return (
     <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
-      <MetricCard label="MRR"                  value={fmt(currentMRR)}  sub={mrrSub}  trend={mrrTrend} />
+      <MetricCard label="MRR"                  value={fmt(currentMRR)}  sub={mrrSub}  trend={mrrTrend} verified={mrrEntries.length > 0 ? (mrrEntries[0].verified || false) : undefined} />
       <MetricCard label="Project Revenue YTD"  value={fmt(revenueYTD)}  sub={`${backlog.filter(i => ['Invoiced','Paid'].includes(i.status)).length} projects`} />
       <MetricCard label="Total Revenue YTD"    value={fmt(totalYTD)}    sub={`MRR×${now.getMonth()+1}mo + projects`} />
       <ForecastCard forecast={forecast} loading={forecastLoading} />
