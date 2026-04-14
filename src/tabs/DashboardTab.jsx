@@ -24,6 +24,7 @@ import { NASSection }     from '../components/NAS/NASWidget';
 import { RiskSignalsSection } from '../components/Risk/RiskWidget';
 import { ChannelsSection } from '../components/Channels/ChannelsWidget';
 import { GovernanceSection } from '../components/Governance/GovernanceWidget';
+import SurvivalTrend from '../components/Cockpit/MeasureSection/SurvivalTrend';
 
 /* ── Design tokens ───────────────────────────── */
 const S = {
@@ -116,7 +117,7 @@ function GovernanceView({ governanceProps }) {
    DASHBOARD MODE — Read-only intelligence overview
    Layout: KPIs → Goals+NAS → Risks+Channels → Build → Learn
    ═══════════════════════════════════════════════ */
-function DashboardView({ setTab, onNavigate, nasProps, riskProps, channelsProps, governancePendingCount }) {
+function DashboardView({ setTab, onNavigate, nasProps, riskProps, channelsProps, governancePendingCount, survivalProps }) {
   const handleGoToGoals       = () => setTab?.('goals');
   const handleGoToExperiments = () => setTab?.('experiments');
 
@@ -132,6 +133,14 @@ function DashboardView({ setTab, onNavigate, nasProps, riskProps, channelsProps,
   const highRisks = activeRisks.filter(r => r.severity === 'high' || r.severity === 'critical');
 
   const govCount = governancePendingCount || 0;
+
+  // Survival score from Firestore
+  const survivalScore = survivalProps?.latest?.score;
+  const survivalValue = survivalScore != null ? `${survivalScore}%` : '\u2014';
+  const survivalColor = survivalScore == null ? 'var(--color-text-muted)'
+    : survivalScore >= 70 ? 'var(--color-success)'
+    : survivalScore >= 40 ? 'var(--color-warning)'
+    : 'var(--color-error)';
 
   return (
     <div style={{ fontFamily: 'var(--font-sans)', maxWidth: 1440, margin: '0 auto' }}>
@@ -157,6 +166,12 @@ function DashboardView({ setTab, onNavigate, nasProps, riskProps, channelsProps,
           color={govCount > 0 ? 'var(--color-warning)' : 'var(--color-success)'}
           onClick={govCount > 0 ? () => onNavigate?.('cockpit', 'governance') : undefined}
         />
+        <KPITile
+          value={survivalValue}
+          label="Survival Score"
+          sub={survivalScore != null ? (survivalScore >= 70 ? 'Healthy' : survivalScore >= 40 ? 'At Risk' : 'Critical') : 'Loading'}
+          color={survivalColor}
+        />
       </div>
 
       {/* ══════════ ROW 2: GOALS+FINANCIALS (60%) | NAS (40%) ══════════ */}
@@ -173,6 +188,9 @@ function DashboardView({ setTab, onNavigate, nasProps, riskProps, channelsProps,
               <FinancialMetrics />
             </div>
             <BacklogPipeline />
+            <div style={{ marginTop: S.cardGap }}>
+              <SurvivalTrend history={survivalProps?.history} loading={survivalProps?.loading} />
+            </div>
           </div>
 
           {/* Right column — 40% */}
@@ -264,7 +282,7 @@ function DashboardView({ setTab, onNavigate, nasProps, riskProps, channelsProps,
 /* ══════════════════════════════════════════════════
    MAIN EXPORT — routes to correct view by mode
    ═══════════════════════════════════════════════ */
-export default function DashboardTab({ mode = "overview", setTab, onNavigate, nasProps, riskProps, channelsProps, governanceProps, governancePendingCount }) {
+export default function DashboardTab({ mode = "overview", setTab, onNavigate, nasProps, riskProps, channelsProps, governanceProps, governancePendingCount, survivalProps }) {
   if (mode === "governance") {
     return <GovernanceView governanceProps={governanceProps} />;
   }
@@ -277,6 +295,7 @@ export default function DashboardTab({ mode = "overview", setTab, onNavigate, na
       riskProps={riskProps}
       channelsProps={channelsProps}
       governancePendingCount={governancePendingCount}
+      survivalProps={survivalProps}
     />
   );
 }

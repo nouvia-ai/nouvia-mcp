@@ -20,6 +20,7 @@ import { RiskDetail, RiskEditForm } from './components/Risk/RiskWidget';
 import useChannels from './hooks/useChannels';
 import { ChannelDetail, ChannelEditForm } from './components/Channels/ChannelsWidget';
 import useGovernanceQueue from './hooks/useGovernanceQueue';
+import useSurvivalScores from './hooks/useSurvivalScores';
 import { GovernanceDetail } from './components/Governance/GovernanceWidget';
 
 // ─── CONSTANTS ──────────────────────────────────
@@ -812,6 +813,9 @@ export default function App() {
 
   // Governance state
   const govData = useGovernanceQueue();
+
+  // Survival score state
+  const survivalData = useSurvivalScores();
   const [govDetailItem, setGovDetailItem] = useState(null);
 
   const toggleTheme = () => {
@@ -944,6 +948,10 @@ export default function App() {
           loading: channelData.loading,
           canvasLastModified: channelData.canvasLastModified,
           onSelectChannel: (ch) => setChannelDetailItem(ch),
+        }} survivalProps={{
+          latest: survivalData.latest,
+          history: survivalData.history,
+          loading: survivalData.loading,
         }} />}
         {activeView === "overview" && nasDetailClient && !nasEditing && (
           <NASDetail
