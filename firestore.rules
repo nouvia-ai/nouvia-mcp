@@ -209,5 +209,53 @@ service cloud.firestore {
       allow write: if isAuthenticated();
     }
 
+    // ── NIP Dashboard collections (added for Sessions 4A/4B/5/6) ────────────
+    match /survival_scores/{doc} {
+      allow read, write: if isBen();
+    }
+    match /tke_evidence/{doc} {
+      allow read, write: if isBen();
+    }
+    match /data_integrity_reports/{doc} {
+      allow read, write: if isBen();
+    }
+
+    // ── MCP-managed collections (read by dashboard, written by MCP server) ──
+    match /clients/{doc} {
+      allow read, write: if isBen();
+    }
+    match /skills/{doc} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+    match /coworkers/{doc} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+    match /capability_gaps/{doc} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+    match /core_components/{doc} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+    match /canvas/{doc} {
+      allow read, write: if isBen();
+    }
+    match /mcp_connectors/{doc} {
+      allow read, write: if isBen();
+    }
+    match /aims_requests/{doc} {
+      allow read, write: if isAuthenticated();
+    }
+    match /delivery_documents/{doc} {
+      allow read: if true;
+      allow write: if isAuthenticated();
+    }
+    match /survival_history/{doc} {
+      allow read, write: if isBen();
+    }
+
   }
 }
