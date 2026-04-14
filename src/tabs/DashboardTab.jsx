@@ -303,6 +303,15 @@ function DashboardView({ setTab, onNavigate, nasProps, riskProps, channelsProps,
         </div>
       </div>
 
+      {/* ══════════ DATA FRESHNESS ══════════ */}
+      <div style={{
+        textAlign: 'center', fontSize: 'var(--font-size-xs)',
+        color: 'var(--color-text-ghost)', padding: 'var(--space-2) 0',
+        fontFamily: 'var(--font-sans)',
+      }}>
+        Data: Live &middot; Last loaded: {new Date().toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+      </div>
+
     </div>
   );
 }

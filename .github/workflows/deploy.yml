@@ -1,9 +1,8 @@
 name: Deploy Firestore Indexes
 
-# ⚠️ THIS REPO DOES NOT OWN FIREBASE HOSTING OR FIRESTORE RULES.
-# nouvia-os.web.app and firestore.rules are owned by github.com/nouvia-ai/nouvia-studio.
-# This repo deploys INDEXES ONLY. Rules are managed exclusively by nouvia-studio
-# to prevent rule overwrites from two repos competing.
+# This workflow deploys INDEXES ONLY (triggered by index file changes).
+# Hosting is deployed by deploy-hosting.yml (triggered on every push to main).
+# Firestore rules are managed separately.
 
 on:
   push:
