@@ -6,10 +6,14 @@
  *
  * Dashboard layout:
  *   Row 1: KPI metric tiles (compact horizontal)
- *   Row 2: Goals+Financials (60%) | NAS (40%)
- *   Row 3: Risk Intelligence (50%) | Channels (50%)
- *   Row 4: Build (OKR, Priorities, Todos)
- *   Row 5: Learn (Flywheel, Findings, Experiments)
+ *   Loop 1 — Product Intelligence (TKE):
+ *     Risk Intelligence | Channels
+ *     TKE Evidence Panel | Key Findings
+ *   Loop 2 — Business Model (BMC/BML):
+ *     Goals+Financials | NAS
+ *     Survival Score + Trend
+ *     Experiments | Flywheel
+ *   Build: OKR, Priorities, Todos
  */
 import NorthStarGoal      from '../components/Cockpit/MeasureSection/NorthStarGoal';
 import FinancialMetrics   from '../components/Cockpit/MeasureSection/FinancialMetrics';
@@ -20,6 +24,7 @@ import WeeklyTodos        from '../components/Cockpit/BuildSection/WeeklyTodos';
 import KeyFindings        from '../components/Cockpit/LearnSection/KeyFindings';
 import ExperimentSummary  from '../components/Cockpit/LearnSection/ExperimentSummary';
 import FlywheelConnection from '../components/Cockpit/LearnSection/FlywheelConnection';
+import TkeEvidencePanel   from '../components/Cockpit/LearnSection/TkeEvidencePanel';
 import { NASSection }     from '../components/NAS/NASWidget';
 import { RiskSignalsSection } from '../components/Risk/RiskWidget';
 import { ChannelsSection } from '../components/Channels/ChannelsWidget';
@@ -174,44 +179,20 @@ function DashboardView({ setTab, onNavigate, nasProps, riskProps, channelsProps,
         />
       </div>
 
-      {/* ══════════ ROW 2: GOALS+FINANCIALS (60%) | NAS (40%) ══════════ */}
-      <div style={{ marginBottom: S.sectionGap }}>
-        <SectionHeader label="Measure" sub="Are we on track?" />
+      {/* ══════════════════════════════════════════════
+           LOOP 1 — Product Intelligence (TKE)
+           ═══════════════════════════════════════════ */}
+      <div style={{
+        marginBottom: S.sectionGap,
+        padding: S.cardPad,
+        borderRadius: 'var(--radius-lg, 12px)',
+        border: '1px solid var(--color-border-default)',
+        backgroundColor: 'var(--color-bg-sunken)',
+      }}>
+        <SectionHeader label="Loop 1 — Product Intelligence" sub="TKE: what do we know?" />
 
-        <div style={{ display: 'flex', gap: S.cardGap, alignItems: 'flex-start' }}>
-          {/* Left column — 60% */}
-          <div style={{ flex: '3 1 0', minWidth: 0 }}>
-            <div style={{ marginBottom: S.cardGap }}>
-              <NorthStarGoal onAddGoal={handleGoToGoals} />
-            </div>
-            <div style={{ marginBottom: S.cardGap }}>
-              <FinancialMetrics />
-            </div>
-            <BacklogPipeline />
-            <div style={{ marginTop: S.cardGap }}>
-              <SurvivalTrend history={survivalProps?.history} loading={survivalProps?.loading} />
-            </div>
-          </div>
-
-          {/* Right column — 40% */}
-          <div style={{ flex: '2 1 0', minWidth: 0 }}>
-            {nasProps ? (
-              <NASSection {...nasProps} />
-            ) : (
-              <div style={{ ...cardStyle, padding: S.cardPad, textAlign: 'center', color: 'var(--color-text-subtle)', fontSize: 'var(--font-size-sm)' }}>
-                Loading adoption data...
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* ══════════ ROW 3: RISK (50%) | CHANNELS (50%) ══════════ */}
-      <div style={{ marginBottom: S.sectionGap }}>
-        <SectionHeader label="Intelligence" sub="Signals & reach" />
-
-        <div style={{ display: 'flex', gap: S.cardGap, alignItems: 'flex-start' }}>
-          {/* Left — Risk Intelligence */}
+        {/* Risk Signals | Channels */}
+        <div style={{ display: 'flex', gap: S.cardGap, alignItems: 'flex-start', marginBottom: S.cardGap }}>
           <div style={{ flex: '1 1 0', minWidth: 0 }}>
             {riskProps ? (
               <RiskSignalsSection {...riskProps} />
@@ -221,8 +202,6 @@ function DashboardView({ setTab, onNavigate, nasProps, riskProps, channelsProps,
               </div>
             )}
           </div>
-
-          {/* Right — Channels */}
           <div style={{ flex: '1 1 0', minWidth: 0 }}>
             {channelsProps ? (
               <ChannelsSection {...channelsProps} />
@@ -233,9 +212,72 @@ function DashboardView({ setTab, onNavigate, nasProps, riskProps, channelsProps,
             )}
           </div>
         </div>
+
+        {/* TKE Evidence | Key Findings */}
+        <div style={{ display: 'flex', gap: S.cardGap, alignItems: 'flex-start' }}>
+          <div style={{ flex: '1.2 1 0', minWidth: 0 }}>
+            <WidgetLabel>TKE Evidence</WidgetLabel>
+            <TkeEvidencePanel />
+          </div>
+          <div style={{ flex: '1 1 0', minWidth: 0 }}>
+            <WidgetLabel>Key Findings</WidgetLabel>
+            <KeyFindings />
+          </div>
+        </div>
       </div>
 
-      {/* ══════════ ROW 4: BUILD ══════════ */}
+      {/* ══════════════════════════════════════════════
+           LOOP 2 — Business Model (BMC / BML)
+           ═══════════════════════════════════════════ */}
+      <div style={{
+        marginBottom: S.sectionGap,
+        padding: S.cardPad,
+        borderRadius: 'var(--radius-lg, 12px)',
+        border: '1px solid var(--color-border-default)',
+        backgroundColor: 'var(--color-bg-sunken)',
+      }}>
+        <SectionHeader label="Loop 2 — Business Model" sub="BMC/BML: are we viable?" />
+
+        {/* Goals+Financials (60%) | NAS (40%) */}
+        <div style={{ display: 'flex', gap: S.cardGap, alignItems: 'flex-start', marginBottom: S.cardGap }}>
+          <div style={{ flex: '3 1 0', minWidth: 0 }}>
+            <div style={{ marginBottom: S.cardGap }}>
+              <NorthStarGoal onAddGoal={handleGoToGoals} />
+            </div>
+            <div style={{ marginBottom: S.cardGap }}>
+              <FinancialMetrics />
+            </div>
+            <BacklogPipeline />
+          </div>
+          <div style={{ flex: '2 1 0', minWidth: 0 }}>
+            {nasProps ? (
+              <NASSection {...nasProps} />
+            ) : (
+              <div style={{ ...cardStyle, padding: S.cardPad, textAlign: 'center', color: 'var(--color-text-subtle)', fontSize: 'var(--font-size-sm)' }}>
+                Loading adoption data...
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Survival Trend */}
+        <div style={{ marginBottom: S.cardGap }}>
+          <SurvivalTrend history={survivalProps?.history} loading={survivalProps?.loading} />
+        </div>
+
+        {/* Experiments | Flywheel */}
+        <div style={{ marginBottom: S.cardGap }}>
+          <FlywheelConnection />
+        </div>
+        <div style={{ display: 'flex', gap: S.cardGap, alignItems: 'flex-start' }}>
+          <div style={{ flex: '1 1 0', minWidth: 0 }}>
+            <WidgetLabel>Experiments</WidgetLabel>
+            <ExperimentSummary onNavigate={handleGoToExperiments} />
+          </div>
+        </div>
+      </div>
+
+      {/* ══════════ BUILD ══════════ */}
       <div style={{ marginBottom: S.sectionGap }}>
         <SectionHeader label="Build" sub="What do I do today?" />
 
@@ -251,26 +293,6 @@ function DashboardView({ setTab, onNavigate, nasProps, riskProps, channelsProps,
           <div style={{ flex: '1.2 1 0', minWidth: 0 }}>
             <WidgetLabel>This Week</WidgetLabel>
             <WeeklyTodos />
-          </div>
-        </div>
-      </div>
-
-      {/* ══════════ ROW 5: LEARN ══════════ */}
-      <div style={{ marginBottom: S.sectionGap }}>
-        <SectionHeader label="Learn" sub="What did we just learn?" />
-
-        <div style={{ marginBottom: S.cardGap }}>
-          <FlywheelConnection />
-        </div>
-
-        <div style={{ display: 'flex', gap: S.cardGap, alignItems: 'flex-start' }}>
-          <div style={{ flex: '1.2 1 0', minWidth: 0 }}>
-            <WidgetLabel>Key Findings</WidgetLabel>
-            <KeyFindings />
-          </div>
-          <div style={{ flex: '1 1 0', minWidth: 0 }}>
-            <WidgetLabel>Experiments</WidgetLabel>
-            <ExperimentSummary onNavigate={handleGoToExperiments} />
           </div>
         </div>
       </div>
